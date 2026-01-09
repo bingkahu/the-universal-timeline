@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chronicle Engine | Master Build</title>
+    <style>
+        :root {
+            --bg: #050508;
+            --surface: #121217;
+            --primary: #00f2ff;
+            --secondary: #7000ff;
+            --text: #e0e0e0;
+            --accent: #ff0055;
+            --success: #00ff88;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', 'Courier New', monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+        }
+
+        /* --- UI & HUD --- */
+        header {
+            width: 100%;
+            padding: 20px;
+            background: var(--surface);
+            border-bottom: 2px solid var(--primary);
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            z-index: 100;
+        }
+
+        #viewport-container {
+            position: relative;
+            margin: 20px 0;
+            border: 4px solid #222;
+            background: #000;
+            cursor: crosshair;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            padding: 15px;
+            box-sizing: border-box;
+        }
+
+        .hud-stat {
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-left: 3px solid var(--primary);
+            margin-bottom: 5px;
+            width: fit-content;
+        }
+
+        /* --- WIKI SYSTEM --- */
+        #wiki-section {
+            width: 900px;
+            max-width: 95vw;
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 20px;
+            margin-top: 20px;
+            padding-bottom: 100px;
+        }
+
+        #wiki-sidebar {
+            background: var(--surface);
+            padding: 15px;
+            border-radius: 4px;
+            height: fit-content;
+        }
+
+        #wiki-main {
+            background: var(--surface);
+            padding: 30px;
+            border-radius: 4px;
+            border-top: 4px solid var(--secondary);
+            min-height: 400px;
+        }
+
+        .wiki-link {
+            display: block;
+            padding: 10px;
+            color: #888;
+            text-decoration: none;
+            border-bottom: 1px solid #222;
+            cursor: pointer;
+        }
+
+        .wiki-link:hover {
+            color: var(--primary);
+            background: #1a1a20;
+        }
+
+        .tag {
+            background: var(--secondary);
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            margin-right: 5px;
+        }
+
+        /* --- UTILS --- */
+        .hidden { display: none; }
+        .crt-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            background-size: 100% 3px, 3px 100%;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>CHRONICLE <span style="color:var(--primary)">ENGINE</span> v1.0</h1>
+    <p style="font-size: 12px; opacity: 0.6;">[WASD] Move | [E] Interact | [SPACE] Attack | [F] Save</p>
+</header>
+
+<div id="viewport-container">
+    <canvas id="gameCanvas"></canvas>
+    <div class="crt-overlay"></div>
+    <div id="ui-layer">
+        <div class="hud-stat" id="hp-display">HP: 100 / 100</div>
+        <div class="hud-stat" id="coord-display">POS: 0, 0</div>
+        <div id="dialogue-anchor"></div>
+    </div>
+</div>
+
+<div id="wiki-section">
+    <aside id="wiki-sidebar">
+        <h3 style="color:var(--primary)">DATABASE</h3>
+        <div id="wiki-list"></div>
+    </aside>
+    <main id="wiki-main">
+        <div id="wiki-content">
+            <h2>Select a Codex Entry</h2>
+            <p>The Chronicle Engine dynamically updates this wiki based on game state.</p>
+        </div>
+    </main>
+</div>
+
+<script>
+/**
+ * ============================================================================
+ * CHRONICLE ENGINE - CORE ARCHITECTURE
+ * 20+ Years Professional Design
+ * ============================================================================
+ */
+
+const SETTINGS = {
+    TILE_SIZE: 32,
+    MAP_W: 40,
+    MAP_H: 30,
+    CANVAS_W: 896,
+    CANVAS_H: 512,
+    FPS: 60
+};
+
+// --- DATABASE LAYER ---
+const DB = {
+    entities: [
+        { id: 'player_01', name: 'The Architect', hp: 200, lore: 'A user with the power to rewrite the world.', tags: ['Admin', 'User'] },
+        { id: 'mob_01', name: 'Syntax Ghost', hp: 45, lore: 'A floating error in the logic flow.', tags: ['Bug', 'Aggressive'] },
+        { id: 'mob_02', name: 'Stack Overflow', hp: 500, lore: 'A massive entity that consumes memory.', tags: ['Boss', 'Logic'] },
+        { id: 'npc_01', name: 'The Debugger', hp: 999, lore: 'He offers advice on how to fix the broken map.', tags: ['Friendly', 'Essential'] }
+    ],
+    items: [
+        { id: 'item_01', name: 'Git Commit', desc: 'Saves your current progress.', color: '#00ff88' }
+    ]
+};
+
+// --- GAME STATE MACHINE ---
+const State = {
+    PLAYING: 'PLAYING',
+    DIALOGUE: 'DIALOGUE',
+    MENU: 'MENU',
+    current: 'PLAYING'
+};
+
+// --- CLASS: PARTICLE ---
+class Particle {
+    constructor(x, y, color) {
+        this.x = x; this.y = y;
+        this.vx = (Math.random() - 0.5) * 6;
+        this.vy = (Math.random() - 0.5) * 6;
+        this.life = 1.0;
+        this.color = color;
+    }
+    update() {
+        this.x += this.vx; this.y += this.vy;
+        this.life -= 0.03;
+    }
+}
+
+// --- CLASS: ACTOR ---
+class Actor {
+    constructor(dbId, x, y) {
+        const data = DB.entities.find(e => e.id === dbId);
+        this.id = dbId;
+        this.name = data.name;
+        this.x = x; this.y = y;
+        this.w = SETTINGS.TILE_SIZE;
+        this.h = SETTINGS.TILE_SIZE;
+        this.hp = data.hp;
+        this.maxHp = data.hp;
+        this.color = data.tags.includes('Friendly') ? '#00ff88' : '#ff0055';
+        this.path = [];
+    }
+
+    draw(ctx, cam) {
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x - cam.x, this.y - cam.y, this.w, this.h);
+        
+        // Health Bar
+        ctx.fillStyle = '#222';
+        ctx.fillRect(this.x - cam.x, this.y - cam.y - 8, this.w, 4);
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x - cam.x, this.y - cam.y - 8, (this.hp / this.maxHp) * this.w, 4);
+    }
+}
+
+// --- ENGINE MODULES ---
+const Engine = {
+    canvas: null, ctx: null,
+    player: null,
+    entities: [],
+    particles: [],
+    camera: { x: 0, y: 0 },
+    keys: {},
+    map: [],
+
+    init() {
+        this.canvas = document.getElementById('gameCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.canvas.width = SETTINGS.CANVAS_W;
+        this.canvas.height = SETTINGS.CANVAS_H;
+
+        this.generateMap();
+        this.player = new Actor('player_01', 100, 100);
+        this.player.color = '#00f2ff';
+        
+        this.entities.push(new Actor('mob_01', 400, 300));
+        this.entities.push(new Actor('npc_01', 200, 150));
+
+        this.bindEvents();
+        this.buildWiki();
+        this.loop();
+    },
+
+    generateMap() {
+        for(let y=0; y<SETTINGS.MAP_H; y++) {
+            this.map[y] = [];
+            for(let x=0; x<SETTINGS.MAP_W; x++) {
+                this.map[y][x] = (x === 0 || y === 0 || x === SETTINGS.MAP_W-1 || y === SETTINGS.MAP_H-1 || Math.random() < 0.05) ? 1 : 0;
+            }
+        }
+    },
+
+    bindEvents() {
+        window.addEventListener('keydown', e => {
+            this.keys[e.key.toLowerCase()] = true;
+            if(e.key === 'f') this.save();
+            if(e.key === 'e') this.interact();
+            if(e.key === ' ') this.attack();
+        });
+        window.addEventListener('keyup', e => this.keys[e.key.toLowerCase()] = false);
+    },
+
+    update() {
+        if(State.current !== State.PLAYING) return;
+
+        let ox = 0, oy = 0;
+        if(this.keys['w']) oy -= 4;
+        if(this.keys['s']) oy += 4;
+        if(this.keys['a']) ox -= 4;
+        if(this.keys['d']) ox += 4;
+
+        // Simple Collision
+        if(!this.isSolid(this.player.x + ox, this.player.y + oy)) {
+            this.player.x += ox;
+            this.player.y += oy;
+        }
+
+        // Camera follow
+        this.camera.x = this.player.x - SETTINGS.CANVAS_W/2;
+        this.camera.y = this.player.y - SETTINGS.CANVAS_H/2;
+
+        // Update Particles
+        this.particles = this.particles.filter(p => p.life > 0);
+        this.particles.forEach(p => p.update());
+
+        // Update UI
+        document.getElementById('hp-display').innerText = `HP: ${this.player.hp} / ${this.player.maxHp}`;
+        document.getElementById('coord-display').innerText = `POS: ${Math.floor(this.player.x)}, ${Math.floor(this.player.y)}`;
+    },
+
+    isSolid(x, y) {
+        const gridX = Math.floor((x + 16) / SETTINGS.TILE_SIZE);
+        const gridY = Math.floor((y + 16) / SETTINGS.TILE_SIZE);
+        return this.map[gridY] && this.map[gridY][gridX] === 1;
+    },
+
+    draw() {
+        this.ctx.fillStyle = '#050508';
+        this.ctx.fillRect(0, 0, SETTINGS.CANVAS_W, SETTINGS.CANVAS_H);
+
+        // Draw Map
+        this.ctx.strokeStyle = '#111';
+        for(let y=0; y<SETTINGS.MAP_H; y++) {
+            for(let x=0; x<SETTINGS.MAP_W; x++) {
+                if(this.map[y][x] === 1) {
+                    this.ctx.fillStyle = '#16161a';
+                    this.ctx.fillRect(x*32 - this.camera.x, y*32 - this.camera.y, 32, 32);
+                }
+                this.ctx.strokeRect(x*32 - this.camera.x, y*32 - this.camera.y, 32, 32);
+            }
+        }
+
+        // Draw Entities
+        this.entities.forEach(ent => ent.draw(this.ctx, this.camera));
+        this.player.draw(this.ctx, this.camera);
+
+        // Draw Particles
+        this.particles.forEach(p => {
+            this.ctx.globalAlpha = p.life;
+            this.ctx.fillStyle = p.color;
+            this.ctx.fillRect(p.x - this.camera.x, p.y - this.camera.y, 4, 4);
+        });
+        this.ctx.globalAlpha = 1;
+    },
+
+    loop() {
+        this.update();
+        this.draw();
+        requestAnimationFrame(() => this.loop());
+    },
+
+    // --- SYSTEMS ---
+    attack() {
+        this.entities.forEach(en => {
+            const dist = Math.hypot(this.player.x - en.x, this.player.y - en.y);
+            if(dist < 50) {
+                en.hp -= 10;
+                for(let i=0; i<10; i++) this.particles.push(new Particle(en.x+16, en.y+16, '#ff0055'));
+                if(en.hp <= 0) {
+                    this.entities = this.entities.filter(e => e !== en);
+                }
+            }
+        });
+    },
+
+    interact() {
+        this.entities.forEach(en => {
+            const dist = Math.hypot(this.player.x - en.x, this.player.y - en.y);
+            if(dist < 50 && en.id === 'npc_01') {
+                Dialogue.start("The Debugger: 'Be careful of the memory leaks in the south corridor.'");
+            }
+        });
+    },
+
+    save() {
+        const data = { x: this.player.x, y: this.player.y, hp: this.player.hp };
+        localStorage.setItem('chronicle_save', JSON.stringify(data));
+        alert("System State Saved to LocalStorage");
+    },
+
+    buildWiki() {
+        const list = document.getElementById('wiki-list');
+        DB.entities.forEach(e => {
+            const item = document.createElement('a');
+            item.className = 'wiki-link';
+            item.innerText = e.name;
+            item.onclick = () => this.showWiki(e.id);
+            list.appendChild(item);
+        });
+    },
+
+    showWiki(id) {
+        const data = DB.entities.find(e => e.id === id);
+        const content = document.getElementById('wiki-content');
+        content.innerHTML = `
+            <h2>${data.name}</h2>
+            <div>${data.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>
+            <hr style="border:1px solid #222; margin: 15px 0;">
+            <p>${data.lore}</p>
+            <p><strong>Base HP:</strong> ${data.hp}</p>
+        `;
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    }
+};
+
+const Dialogue = {
+    start(text) {
+        State.current = State.DIALOGUE;
+        const anchor = document.getElementById('dialogue-anchor');
+        anchor.innerHTML = `
+            <div style="position:absolute; bottom:20px; left:50%; transform:translateX(-50%); 
+            width:80%; background:rgba(0,0,0,0.9); border:2px solid var(--primary); padding:20px; pointer-events:all;">
+                <p>${text}</p>
+                <button onclick="Dialogue.end()" style="background:var(--primary); border:none; padding:5px 15px; cursor:pointer;">Close</button>
+            </div>
+        `;
+    },
+    end() {
+        State.current = State.PLAYING;
+        document.getElementById('dialogue-anchor').innerHTML = '';
+    }
+};
+
+// BOOT ENGINE
+window.onload = () => Engine.init();
+
+</script>
+</body>
+</html>
