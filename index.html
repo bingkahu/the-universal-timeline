@@ -1,1703 +1,580 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>Dream Puff Odyssey – 10-Level Kirby‑like HTML5 Game</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-<!--
-====================================================================
- DREAM PUFF ODYSSEY
- Single-file HTML5 game for GitHub Pages
-  - Cute floaty platformer inspired by Kirby vibes
-  - 10 different levels
-  - Arrow keys / WASD to move, jump, float
-  - J = inhale, K = spit star
-  - R = restart level
-  - Esc = pause
- This file is intentionally long (~2000 lines) for your request.
- You can drop it into github/index.html and run it as-is.
-====================================================================
--->
-
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Shardstorm — Roguelike Arena</title>
+<meta name="description" content="Shardstorm — procedural spells, relic synergies, evolving shard bosses. Roguelike arena built for chaos."/>
 <style>
-/* ==================================================================
-   GLOBAL PAGE STYLES
-   ================================================================== */
-
-html, body {
-    margin: 0;
-    padding: 0;
-    background: radial-gradient(circle at top, #1b1440 0, #050313 60%, #02010a 100%);
-    color: #fefaff;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    overflow: hidden;
-}
-
-#game-root {
-    position: relative;
-    width: 100vw;
-    height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-#game {
-    border-radius: 12px;
-    border: 3px solid #ffffff22;
-    box-shadow:
-        0 0 40px rgba(0, 0, 0, 0.8),
-        0 0 60px rgba(192, 132, 252, 0.35);
-    background: #000;
-    image-rendering: pixelated;
-}
-
-/* ==================================================================
-   UI OVERLAY
-   ================================================================== */
-
-#ui-overlay {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-}
-
-#ui-topbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 18px;
-    font-size: 14px;
-    text-shadow: 0 0 6px #000;
-    user-select: none;
-}
-
-#ui-topbar .left span,
-#ui-topbar .right span {
-    margin-right: 16px;
-}
-
-.badge {
-    padding: 2px 8px;
-    border-radius: 999px;
-    border: 1px solid #ffffff44;
-    background: #ffffff11;
-    margin-right: 8px;
-    font-size: 11px;
-}
-
-/* center messages */
-
-#ui-center {
-    pointer-events: auto;
-    align-self: center;
-    width: 100%;
-    max-width: 520px;
-    margin-top: 16vh;
-    text-align: center;
-    padding: 16px 24px 24px;
-    border-radius: 16px;
-    background: linear-gradient(to bottom, #120a2aee, #050312ee);
-    box-shadow: 0 24px 80px rgba(0,0,0,0.9);
-    border: 1px solid #ffffff33;
-}
-
-#ui-center h1 {
-    margin: 0 0 6px;
-    font-size: 28px;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-}
-
-#ui-center p {
-    margin: 4px 0 10px;
-    font-size: 14px;
-    color: #d6d0ff;
-}
-
-.ui-small {
-    margin-top: 8px;
-    font-size: 11px;
-    color: #c3bcff;
-}
-
-.btn {
-    display: inline-block;
-    margin-top: 10px;
-    padding: 8px 18px;
-    border-radius: 999px;
-    border: 1px solid #ffffff77;
-    background: linear-gradient(to right, #f973c9bb, #a855f7dd);
-    color: #fefaff;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    text-shadow: 0 0 6px #000;
-    box-shadow:
-        0 0 18px rgba(236, 72, 153, 0.8),
-        0 0 24px rgba(168, 85, 247, 0.7);
-    transition: transform 0.07s ease, box-shadow 0.07s ease, filter 0.07s ease;
-}
-
-.btn:hover {
-    transform: translateY(-1px);
-    filter: brightness(1.05);
-    box-shadow:
-        0 0 20px rgba(236, 72, 153, 1),
-        0 0 28px rgba(168, 85, 247, 1);
-}
-
-.btn-secondary {
-    background: #ffffff10;
-    box-shadow: none;
-    margin-left: 6px;
-}
-
-.btn-secondary:hover {
-    box-shadow: 0 0 14px rgba(255,255,255,0.3);
-}
-
-/* bottom tips */
-
-#ui-bottom {
-    padding: 6px 18px 12px;
-    font-size: 11px;
-    color: #c0b5ff;
-    text-shadow: 0 0 4px #000;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-}
-
-.kbd {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1px 6px;
-    border-radius: 4px;
-    border: 1px solid #ffffff55;
-    background: #171227dd;
-    font-size: 11px;
-    margin: 0 1px;
-}
-
-/* utility */
-
-.hidden {
-    display: none;
-}
-
-/* ==================================================================
-   RESPONSIVE
-   ================================================================== */
-
-@media (max-width: 1024px) {
-    #game {
-        width: 96vw;
-        height: auto;
-    }
-}
-
-@media (max-width: 640px) {
-    #ui-topbar {
-        font-size: 11px;
-        padding-inline: 10px;
-    }
-    #ui-topbar .right span:nth-child(2) {
-        display: none;
-    }
-    #ui-center {
-        max-width: 90vw;
-        margin-top: 14vh;
-        padding: 12px 16px 18px;
-    }
-}
-
-/* ==================================================================
-   END OF CSS (REST IS JAVASCRIPT)
-   ================================================================== */
+  :root {
+    --bg:#0b0f14; --panel:#121821; --border:#1f2a38; --text:#e8f0ff; --muted:#9fb3c8;
+    --accent:#00d4ff; --accent2:#ff2d6f; --good:#7cff7c; --bad:#ff6b6b; --gold:#ffd166; --violet:#b388ff;
+  }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--text); font-family:Inter,system-ui,Segoe UI,Arial; }
+  #game { width:100vw; height:100vh; display:block; cursor:crosshair; }
+  .hidden { display:none !important; }
+  #ui { position:fixed; inset:0; pointer-events:none; }
+  #hud { position:absolute; top:12px; left:12px; display:flex; gap:12px; pointer-events:auto; flex-wrap:wrap; }
+  .pill { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:8px 12px; font-size:14px; }
+  #score { color:var(--good); font-weight:700; }
+  #wave { color:var(--accent); }
+  #hp { color:var(--bad); }
+  #mana { color:var(--violet); }
+  #seed { color:var(--muted); }
+  #topright { position:absolute; top:12px; right:12px; display:flex; gap:8px; pointer-events:auto; }
+  .btn { pointer-events:auto; display:inline-flex; align-items:center; gap:8px; background:var(--accent); color:#001018; border:none; border-radius:10px; padding:10px 14px; font-weight:700; cursor:pointer; }
+  .btn.secondary { background:#1b2432; color:var(--text); border:1px solid #2a3a52; }
+  .btn.small { padding:6px 10px; font-size:12px; }
+  #start, #gameover, #codex { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
+  .card { background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:20px; width:min(820px,92vw); box-shadow:0 10px 30px rgba(0,0,0,.35); }
+  .title { font-size:22px; font-weight:700; margin-bottom:8px; }
+  .subtitle { color:var(--muted); margin-bottom:16px; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; }
+  .kbd { background:#0e141d; border:1px solid var(--border); border-radius:8px; padding:6px 8px; font-size:13px; }
+  .list { margin-top:10px; }
+  .list .pill { margin-top:6px; }
+  #toast { position:absolute; bottom:12px; left:12px; background:#0e141d; border:1px solid var(--border); border-radius:10px; padding:8px 12px; font-size:13px; pointer-events:none; opacity:0; transform:translateY(8px); transition:opacity .2s, transform .2s; }
+  #toast.show { opacity:1; transform:translateY(0); }
 </style>
 </head>
 <body>
-<div id="game-root">
-    <canvas id="game" width="960" height="540"></canvas>
+<canvas id="game"></canvas>
 
-    <div id="ui-overlay">
-        <!-- TOP BAR -->
-        <div id="ui-topbar">
-            <div class="left">
-                <span id="ui-title"><span class="badge">HTML5</span>Dream Puff Odyssey</span>
-            </div>
-            <div class="right">
-                <span id="ui-level">Level: 1 / 10</span>
-                <span id="ui-lives">Lives: 3</span>
-                <span id="ui-stars">Stars: 0</span>
-                <span id="ui-status">Press Start</span>
-            </div>
-        </div>
+<div id="ui">
+  <div id="hud">
+    <div class="pill">Score: <span id="score">0</span></div>
+    <div class="pill">Wave: <span id="wave">1</span></div>
+    <div class="pill">HP: <span id="hp">100</span></div>
+    <div class="pill">Mana: <span id="mana">100</span></div>
+    <div class="pill">Seed: <span id="seed">—</span></div>
+  </div>
 
-        <!-- CENTER -->
-        <div id="ui-center">
-            <h1>Dream Puff Odyssey</h1>
-            <p>
-                A tiny floaty platformer you can run directly from a single
-                <strong>index.html</strong> file on GitHub Pages.
-            </p>
-            <p>
-                Bounce across pastel clouds, inhale dream critters, and fire star shots
-                through <strong>10 handmade levels</strong>.
-            </p>
-            <button id="btn-start" class="btn">Start New Journey</button>
-            <button id="btn-how" class="btn btn-secondary">How to Play</button>
-            <div class="ui-small" id="ui-help">
-                Move with <span class="kbd">←</span><span class="kbd">→</span> or <span class="kbd">A</span><span class="kbd">D</span>,
-                jump with <span class="kbd">↑</span> / <span class="kbd">W</span> / <span class="kbd">Space</span>.<br />
-                Hold jump to float, inhale with <span class="kbd">J</span>, spit a star with <span class="kbd">K</span>. Restart level with
-                <span class="kbd">R</span>, pause with <span class="kbd">Esc</span>.
-            </div>
-        </div>
+  <div id="topright">
+    <button class="btn small" id="btnCodex">Codex</button>
+    <button class="btn small" id="btnMute">Mute</button>
+    <button class="btn small secondary" id="btnDaily">Daily</button>
+  </div>
 
-        <!-- BOTTOM -->
-        <div id="ui-bottom">
-            <div id="ui-tip-left">
-                Tip: You can drop this file as <strong>index.html</strong> into any GitHub repo, turn on Pages, and share the link.
-            </div>
-            <div id="ui-tip-right">
-                <span class="kbd">R</span> Restart&nbsp;&nbsp;
-                <span class="kbd">Esc</span> Pause
-            </div>
-        </div>
+  <div id="toast">Unlocked!</div>
+
+  <!-- START -->
+  <div id="start">
+    <div class="card">
+      <div class="title">Shardstorm — Roguelike Arena</div>
+      <div class="subtitle">Craft spells from runes, stack relic synergies, and shatter evolving shard bosses.</div>
+      <div class="row">
+        <div class="kbd">WASD: move</div>
+        <div class="kbd">Mouse: aim</div>
+        <div class="kbd">Left‑click: cast</div>
+        <div class="kbd">Right‑click: dash</div>
+        <div class="kbd">Q/E: cycle spells</div>
+        <div class="kbd">Space: overcast</div>
+      </div>
+      <div style="margin-top:16px" class="row">
+        <button class="btn" id="play">Play</button>
+        <button class="btn secondary" id="daily">Daily Seed</button>
+      </div>
+      <div class="list" id="leader"></div>
     </div>
+  </div>
+
+  <!-- GAME OVER -->
+  <div id="gameover" class="hidden">
+    <div class="card">
+      <div class="title">Run complete</div>
+      <div class="subtitle">Score: <span id="finalScore">0</span> — Wave: <span id="finalWave">1</span></div>
+      <div class="row">
+        <button class="btn" id="again">Play again</button>
+        <button class="btn secondary" id="copy">Copy score</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CODEX -->
+  <div id="codex" class="hidden">
+    <div class="card">
+      <div class="title">Codex — Spells & Relics</div>
+      <div class="subtitle">Procedural spells are built from runes. Relics add synergies and mutate behavior.</div>
+      <div class="list" id="codexList"></div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn secondary" id="closeCodex">Close</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
-/* ==================================================================
-   DREAM PUFF ODYSSEY – CORE GAME SCRIPT
-   ================================================================== */
+/* =========================
+   AUDIO (WebAudio)
+   ========================= */
+const Audio = (() => {
+  let ctx, master, sfxGain, musicGain, muted=false;
+  function init(){
+    if (ctx) return;
+    ctx = new (window.AudioContext||window.webkitAudioContext)();
+    master = ctx.createGain(); master.connect(ctx.destination);
+    sfxGain = ctx.createGain(); sfxGain.gain.value = 0.8; sfxGain.connect(master);
+    musicGain = ctx.createGain(); musicGain.gain.value = 0.25; musicGain.connect(master);
+    const o1 = ctx.createOscillator(); o1.type='sawtooth'; o1.frequency.value=96;
+    const o2 = ctx.createOscillator(); o2.type='sawtooth'; o2.frequency.value=192;
+    const lp = ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=900;
+    o1.connect(lp); o2.connect(lp); lp.connect(musicGain);
+    o1.start(); o2.start();
+  }
+  function play(type='cast'){
+    if (!ctx || muted) return;
+    const o = ctx.createOscillator(); const g = ctx.createGain();
+    o.type = 'square';
+    o.frequency.value = type==='hit' ? 520 : type==='dash' ? 220 : type==='boss' ? 160 : 360;
+    g.gain.value = 0.2; o.connect(g); g.connect(sfxGain);
+    o.start(); g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+0.15); o.stop(ctx.currentTime+0.16);
+  }
+  function toggle(){ muted=!muted; master.gain.value = muted?0:1; }
+  return { init, play, toggle, get muted(){return muted;} };
+})();
 
-/* --------------------------------------------------------------
-   CANVAS SETUP
-   -------------------------------------------------------------- */
+/* =========================
+   UTIL
+   ========================= */
+const Util = (() => {
+  let seed = Date.now()%1000000;
+  function setSeed(s){ seed=s; }
+  function rand(){ seed^=seed<<13; seed^=seed>>>17; seed^=seed<<5; return ((seed>>>0)/0xFFFFFFFF); }
+  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+  const lerp=(a,b,p)=>a+(b-a)*p;
+  const now=()=>performance.now();
+  function vec(x=0,y=0){ return {x,y}; }
+  function angle(x1,y1,x2,y2){ return Math.atan2(y2-y1,x2-x1); }
+  function fmt(n){ return n.toLocaleString(); }
+  return { setSeed, rand, clamp, lerp, now, vec, angle, fmt };
+})();
 
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
-const W = canvas.width;
-const H = canvas.height;
+/* =========================
+   CONTENT REGISTRY
+   ========================= */
+const Content = (() => {
+  // Runes define procedural spell traits
+  const Runes = [
+    { id:'bolt',   desc:'Straight projectile' },
+    { id:'pierce', desc:'Pass through enemies' },
+    { id:'split',  desc:'Split on hit' },
+    { id:'orbit',  desc:'Orbit around player' },
+    { id:'tether', desc:'Link enemies and share damage' },
+    { id:'nova',   desc:'Radial burst' },
+    { id:'drain',  desc:'Restore mana on hit' },
+    { id:'ignite', desc:'Damage over time' },
+  ];
+  // Relics add synergies
+  const Relics = [
+    { id:'glass',   name:'Glass Focus', desc:'+40% damage, -20% HP' },
+    { id:'battery', name:'Arc Battery', desc:'+30% cast speed, +10 mana regen' },
+    { id:'echo',    name:'Echo Core',   desc:'Spells repeat after delay' },
+    { id:'chain',   name:'Chain Node',  desc:'Hits chain to nearby enemies' },
+    { id:'vortex',  name:'Vortex Lens', desc:'Pulls enemies slightly on hit' },
+    { id:'bloom',   name:'Bloom Seed',  desc:'Chance to spawn healing orbs' },
+  ];
+  // Enemies
+  const Enemies = [
+    { id:'shard',  hp:20,  speed:1.2, score:10 },
+    { id:'wisp',   hp:12,  speed:1.6, score:8 },
+    { id:'brute',  hp:40,  speed:0.8, score:20 },
+  ];
+  // Boss shards evolve by splitting
+  const Bosses = [
+    { id:'Prime Shard', hp:400, phases:3, split:3, score:500 },
+  ];
+  return { Runes, Relics, Enemies, Bosses };
+})();
 
-/* --------------------------------------------------------------
-   GAME STATE
-   -------------------------------------------------------------- */
+/* =========================
+   GAME
+   ========================= */
+(() => {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  let W = canvas.width = window.innerWidth;
+  let H = canvas.height = window.innerHeight;
 
-const gameState = {
-    currentLevel: 0,
-    totalLevels: 10,
-    lives: 3,
-    stars: 0,
-    status: "Press Start",
-    running: false,
-    paused: false,
-    transition: false,
-    gameOver: false,
-    allClear: false
-};
+  // HUD
+  const hud = {
+    score: document.getElementById('score'),
+    wave: document.getElementById('wave'),
+    hp: document.getElementById('hp'),
+    mana: document.getElementById('mana'),
+    seed: document.getElementById('seed'),
+    start: document.getElementById('start'),
+    gameover: document.getElementById('gameover'),
+    finalScore: document.getElementById('finalScore'),
+    finalWave: document.getElementById('finalWave'),
+    leader: document.getElementById('leader'),
+    toast: document.getElementById('toast'),
+    codex: document.getElementById('codex'),
+    codexList: document.getElementById('codexList'),
+  };
 
-const uiLevel = document.getElementById("ui-level");
-const uiLives = document.getElementById("ui-lives");
-const uiStars = document.getElementById("ui-stars");
-const uiStatus = document.getElementById("ui-status");
-const uiCenter = document.getElementById("ui-center");
-const uiHelp = document.getElementById("ui-help");
-const btnStart = document.getElementById("btn-start");
-const btnHow = document.getElementById("btn-how");
+  // UI
+  const ui = {
+    play: document.getElementById('play'),
+    daily: document.getElementById('daily'),
+    again: document.getElementById('again'),
+    copy: document.getElementById('copy'),
+    btnCodex: document.getElementById('btnCodex'),
+    closeCodex: document.getElementById('closeCodex'),
+    btnMute: document.getElementById('btnMute'),
+    btnDaily: document.getElementById('btnDaily'),
+  };
 
-/* --------------------------------------------------------------
-   INPUT HANDLING
-   -------------------------------------------------------------- */
+  // State
+  let running=false, t=0, dt=0, last=Util.now();
+  let score=0, wave=1;
+  const player = { x:W/2, y:H/2, vx:0, vy:0, speed:220, hp:100, mana:100, dash:0, inv:0 };
+  const input = { w:false,a:false,s:false,d:false, mx:W/2, my:H/2, l:false, r:false, q:false, e:false, space:false };
+  let spells=[], projectiles=[], enemies=[], particles=[], orbs=[];
+  let currentSpell=0;
+  let seedVal = Date.now()%1000000;
 
-const input = {
-    left: false,
-    right: false,
-    up: false,
-    justJump: false,
-    inhale: false,
-    shoot: false,
-    restart: false,
-    pauseToggle: false
-};
+  // Leaderboard (local)
+  function saveScore(){
+    const key='shardstorm_scores';
+    const list = JSON.parse(localStorage.getItem(key)||'[]');
+    list.push({ score:Math.floor(score), wave, date:new Date().toISOString() });
+    list.sort((a,b)=>b.score-a.score);
+    localStorage.setItem(key, JSON.stringify(list.slice(0,10)));
+    renderLeader(list.slice(0,10));
+  }
+  function renderLeader(list){
+    hud.leader.innerHTML = '<div style="margin-top:10px"><b>Local Top 10</b></div>' +
+      list.map((e,i)=>`<div class="pill">${i+1}. ${Util.fmt(e.score)} pts — wave ${e.wave}</div>`).join('');
+  }
 
-window.addEventListener("keydown", (e) => {
-    const k = e.key.toLowerCase();
+  // Toast
+  let toastTimer=0;
+  function toast(msg){ hud.toast.textContent=msg; hud.toast.classList.add('show'); toastTimer=1.8; }
 
-    if (k === "arrowleft" || k === "a") input.left = true;
-    if (k === "arrowright" || k === "d") input.right = true;
+  // Input
+  window.addEventListener('mousemove', e=>{ input.mx=e.clientX; input.my=e.clientY; });
+  window.addEventListener('mousedown', e=>{ if(e.button===0) input.l=true; if(e.button===2) input.r=true; });
+  window.addEventListener('mouseup', e=>{ if(e.button===0) input.l=false; if(e.button===2) input.r=false; });
+  window.addEventListener('contextmenu', e=>e.preventDefault());
+  window.addEventListener('keydown', e=>{
+    if(e.key==='w'||e.key==='W') input.w=true;
+    if(e.key==='a'||e.key==='A') input.a=true;
+    if(e.key==='s'||e.key==='S') input.s=true;
+    if(e.key==='d'||e.key==='D') input.d=true;
+    if(e.key==='q'||e.key==='Q') cycleSpell(-1);
+    if(e.key==='e'||e.key==='E') cycleSpell(+1);
+    if(e.code==='Space') castOver();
+  });
+  window.addEventListener('keyup', e=>{
+    if(e.key==='w'||e.key==='W') input.w=false;
+    if(e.key==='a'||e.key==='A') input.a=false;
+    if(e.key==='s'||e.key==='S') input.s=false;
+    if(e.key==='d'||e.key==='D') input.d=false;
+  });
 
-    if (k === "arrowup" || k === "w" || k === " ") {
-        if (!input.up) input.justJump = true;
-        input.up = true;
-    }
+  // UI events
+  ui.play.addEventListener('click', ()=>start(seedVal));
+  ui.daily.addEventListener('click', ()=>{
+    const d=new Date(); const s=d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate();
+    start(s);
+  });
+  ui.again.addEventListener('click', ()=>start(seedVal));
+  ui.copy.addEventListener('click', async ()=>{
+    const text=`Shardstorm — Score ${Math.floor(score)} — Wave ${wave} — ${new Date().toLocaleDateString()}`;
+    try{ await navigator.clipboard.writeText(text); toast('Copied score'); }catch{}
+  });
+  ui.btnCodex.addEventListener('click', ()=>{ hud.codex.classList.remove('hidden'); renderCodex(); });
+  ui.closeCodex.addEventListener('click', ()=>hud.codex.classList.add('hidden'));
+  ui.btnMute.addEventListener('click', ()=>{ Audio.toggle(); toast(Audio.muted?'Muted':'Unmuted'); });
+  ui.btnDaily.addEventListener('click', ()=>{
+    const d=new Date(); const s=d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate();
+    start(s);
+  });
 
-    if (k === "j") input.inhale = true;
-    if (k === "k") input.shoot = true;
-    if (k === "r") input.restart = true;
-    if (k === "escape") input.pauseToggle = true;
-});
+  // Resize
+  window.addEventListener('resize', ()=>{ W=canvas.width=window.innerWidth; H=canvas.height=window.innerHeight; });
 
-window.addEventListener("keyup", (e) => {
-    const k = e.key.toLowerCase();
-    if (k === "arrowleft" || k === "a") input.left = false;
-    if (k === "arrowright" || k === "d") input.right = false;
+  // Codex
+  function renderCodex(){
+    const spellsList = spells.map((s,i)=>`<div class="pill"><b>Spell ${i+1}</b> — ${s.name} — ${s.desc}</div>`).join('');
+    const runesList = Content.Runes.map(r=>`<div class="pill">Rune: <b>${r.id}</b> — ${r.desc}</div>`).join('');
+    const relicsList = Content.Relics.map(r=>`<div class="pill">Relic: <b>${r.name}</b> — ${r.desc}</div>`).join('');
+    hud.codexList.innerHTML = `<div><b>Current Spells</b></div>${spellsList}<div style="margin-top:8px"><b>Runes</b></div>${runesList}<div style="margin-top:8px"><b>Relics</b></div>${relicsList}`;
+  }
 
-    if (k === "arrowup" || k === "w" || k === " ") input.up = false;
-    if (k === "j") input.inhale = false;
-    if (k === "k") input.shoot = false;
-    if (k === "r") input.restart = false;
-    if (k === "escape") input.pauseToggle = false;
-});
+  // Spells
+  function cycleSpell(dir){ currentSpell=(currentSpell+dir+spells.length)%spells.length; toast('Spell: '+spells[currentSpell].name); }
+  function cast(){
+    const s=spells[currentSpell];
+    if(player.mana < s.cost) return;
+    player.mana = Math.max(0, player.mana - s.cost);
+    Audio.play('cast');
+    s.cast(player.x, player.y, input.mx, input.my);
+  }
+  function castOver(){
+    const s=spells[currentSpell];
+    if(player.mana < s.cost*2) return;
+    player.mana = Math.max(0, player.mana - s.cost*2);
+    Audio.play('boss');
+    s.over(player.x, player.y, input.mx, input.my);
+  }
 
-/* --------------------------------------------------------------
-   UTILS
-   -------------------------------------------------------------- */
-
-function clamp(v, min, max) {
-    return v < min ? min : v > max ? max : v;
-}
-
-function aabb(a, b) {
-    return (
-        a.x < b.x + b.w &&
-        a.x + a.w > b.x &&
-        a.y < b.y + b.h &&
-        a.y + a.h > b.y
-    );
-}
-
-/* --------------------------------------------------------------
-   PLAYER
-   -------------------------------------------------------------- */
-
-const player = {
-    x: 120,
-    y: 360,
-    w: 32,
-    h: 32,
-    vx: 0,
-    vy: 0,
-    speed: 3.0,
-    jumpForce: -8.6,
-    gravity: 0.5,
-    floatGravity: 0.16,
-    maxFall: 11,
-    facing: 1,
-    onGround: false,
-    canDoubleJump: false,
-    floating: false,
-    sucking: false,
-    inhaleRadius: 80,
-    storedEnemy: null,
-    shotCooldown: 0,
-    colorBody: "#ffe3f3",
-    colorOutline: "#ff84c4"
-};
-
-function resetPlayer(level) {
-    player.x = level.spawn.x;
-    player.y = level.spawn.y;
-    player.vx = 0;
-    player.vy = 0;
-    player.onGround = false;
-    player.canDoubleJump = false;
-    player.floating = false;
-    player.sucking = false;
-    player.storedEnemy = null;
-    player.shotCooldown = 0;
-}
-
-function updatePlayer() {
-    const level = levels[gameState.currentLevel];
-
-    // Horizontal
-    player.vx = 0;
-    if (input.left) {
-        player.vx = -player.speed;
-        player.facing = -1;
-    } else if (input.right) {
-        player.vx = player.speed;
-        player.facing = 1;
-    }
-
-    // Jump
-    if (input.justJump) {
-        if (player.onGround) {
-            player.vy = player.jumpForce;
-            player.onGround = false;
-            player.canDoubleJump = true;
-        } else if (player.canDoubleJump) {
-            player.vy = player.jumpForce * 0.85;
-            player.canDoubleJump = false;
+  // Procedural spell factory
+  function makeSpell(name, desc, config){
+    const base = Object.assign({ speed:420, dmg:12, pierce:0, split:0, cost:8, color:'#00d4ff' }, config);
+    return {
+      name, desc, cost:base.cost,
+      cast(x,y,mx,my){
+        const ang=Util.angle(x,y,mx,my);
+        const vx=Math.cos(ang)*base.speed, vy=Math.sin(ang)*base.speed;
+        projectiles.push({ x, y, vx, vy, r:6, dmg:base.dmg, pierce:base.pierce, split:base.split, color:base.color, life:1.2 });
+      },
+      over(x,y,mx,my){
+        // Nova burst
+        for(let i=0;i<16;i++){
+          const a=(Math.PI*2)*(i/16);
+          const vx=Math.cos(a)*base.speed*0.7, vy=Math.sin(a)*base.speed*0.7;
+          projectiles.push({ x, y, vx, vy, r:7, dmg:base.dmg*1.5, pierce:base.pierce+1, split:base.split, color:base.color, life:1.0 });
         }
+      }
+    };
+  }
+
+  // Build initial spellbook
+  function buildSpells(){
+    spells = [
+      makeSpell('Bolt', 'Straight piercer', { dmg:14, pierce:1, cost:6, color:'#7cff7c' }),
+      makeSpell('Splitter', 'Splits on hit', { dmg:10, split:2, cost:8, color:'#ffd166' }),
+      makeSpell('Orbit', 'Orbiting blades', { dmg:8, cost:5, color:'#ff2d6f' }),
+    ];
+  }
+
+  // Enemies
+  function spawnWave(n=10){
+    enemies=[];
+    for(let i=0;i<n;i++){
+      const e = Content.Enemies[Math.floor(Util.rand()*Content.Enemies.length)];
+      const x = Util.rand()<0.5 ? -40 : W+40;
+      const y = 80 + Util.rand()*(H-160);
+      enemies.push({ type:e.id, hp:e.hp, speed:e.speed, x, y, vx:0, vy:0, r:14, score:e.score });
+    }
+    // Boss every 5 waves
+    if(wave%5===0){
+      const b = Content.Bosses[0];
+      enemies.push({ type:'boss', name:b.id, hp:b.hp, speed:0.9, x:W/2, y:80, vx:0, vy:0, r:28, score:b.score, phase:1, split:b.split });
+      toast('Boss: '+b.id);
+    }
+  }
+
+  // Particles
+  function addParticles(x,y,color,n=12){
+    for(let i=0;i<n;i++){
+      const a=Util.rand()*Math.PI*2; const s=60+Util.rand()*140;
+      particles.push({ x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:0.5+Util.rand()*0.6,color });
+    }
+  }
+
+  // Orbs (healing/mana)
+  function spawnOrb(x,y,type='heal'){
+    orbs.push({ x,y,r:6,type,ttl:6 });
+  }
+
+  // Update
+  function update(){
+    const now=Util.now(); dt=Math.min(0.033,(now-last)/1000); last=now;
+    if(!running) return;
+    t+=dt;
+
+    // Input → movement
+    const ax = (input.d?1:0) - (input.a?1:0);
+    const ay = (input.s?1:0) - (input.w?1:0);
+    const len = Math.hypot(ax,ay)||1;
+    player.vx = (ax/len)*player.speed;
+    player.vy = (ay/len)*player.speed;
+    player.x = Util.clamp(player.x + player.vx*dt, 20, W-20);
+    player.y = Util.clamp(player.y + player.vy*dt, 60, H-20);
+
+    // Dash
+    if(input.r && player.dash<=0){ player.dash=0.25; Audio.play('dash'); }
+    if(player.dash>0){
+      player.dash-=dt;
+      player.x += Math.cos(Util.angle(player.x,player.y,input.mx,input.my))*600*dt;
+      player.y += Math.sin(Util.angle(player.x,player.y,input.mx,input.my))*600*dt;
     }
 
-    // Float
-    player.floating = !player.onGround && input.up && player.vy > 0;
-    const g = player.floating ? player.floatGravity : player.gravity;
-    player.vy += g;
-    player.vy = clamp(player.vy, -999, player.maxFall);
+    // Mana regen
+    player.mana = Math.min(100, player.mana + 12*dt);
 
-    // Apply velocity
-    player.x += player.vx;
-    player.y += player.vy;
+    // Casting
+    if(input.l) cast();
 
-    // World bounds
-    if (player.x < 0) player.x = 0;
-    if (player.x + player.w > W) player.x = W - player.w;
+    // Projectiles
+    projectiles = projectiles.filter(p=>{
+      p.life-=dt; p.x+=p.vx*dt; p.y+=p.vy*dt;
+      return p.life>0 && p.x>-40 && p.x<W+40 && p.y>40 && p.y<H+40;
+    });
 
-    if (player.y > H + 200) {
-        loseLife();
-        return;
+    // Enemies move toward player
+    for(const e of enemies){
+      const ang=Util.angle(e.x,e.y,player.x,player.y);
+      e.vx=Math.cos(ang)*e.speed*60; e.vy=Math.sin(ang)*e.speed*60;
+      e.x+=e.vx*dt; e.y+=e.vy*dt;
     }
 
-    // Collide with platforms
-    player.onGround = false;
-    for (const p of level.platforms) {
-        const prevY = player.y - player.vy;
-        const prevX = player.x - player.vx;
-        const willCollide =
-            player.x < p.x + p.w &&
-            player.x + player.w > p.x &&
-            player.y < p.y + p.h &&
-            player.y + player.h > p.y;
-
-        if (!willCollide) continue;
-
-        const wasAbove = prevY + player.h <= p.y;
-        const wasBelow = prevY >= p.y + p.h;
-        const wasLeft = prevX + player.w <= p.x;
-        const wasRight = prevX >= p.x + p.w;
-
-        if (wasAbove) {
-            player.y = p.y - player.h;
-            player.vy = 0;
-            player.onGround = true;
-        } else if (wasBelow) {
-            player.y = p.y + p.h;
-            player.vy = 0.5;
-        } else if (wasLeft) {
-            player.x = p.x - player.w;
-        } else if (wasRight) {
-            player.x = p.x + p.w;
-        }
-    }
-
-    // Spikes
-    for (const s of level.spikes) {
-        const hurtBox = {
-            x: player.x + 4,
-            y: player.y + 8,
-            w: player.w - 8,
-            h: player.h - 8
-        };
-        if (aabb(hurtBox, s)) {
-            loseLife();
-            return;
-        }
-    }
-
-    // Stars
-    for (const star of level.stars) {
-        if (!star.collected && aabb(player, star)) {
-            star.collected = true;
-            gameState.stars++;
-            gameState.status = "Shiny star!";
-            updateUI();
-        }
-    }
-
-    // Goal
-    if (aabb(player, level.goal)) {
-        if (!gameState.transition) {
-            finishLevel();
-        }
-    }
-
-    // Inhale
-    player.sucking = input.inhale;
-    if (player.sucking && !player.storedEnemy) {
-        for (const e of level.enemies) {
-            if (!e.alive) continue;
-            const dx = (e.x + e.w / 2) - (player.x + player.w / 2);
-            const dy = (e.y + e.h / 2) - (player.y + player.h / 2);
-            const dist = Math.hypot(dx, dy);
-            if (dist < player.inhaleRadius) {
-                // Pull enemy
-                e.x -= dx * 0.08;
-                e.y -= dy * 0.08;
-                if (dist < 16) {
-                    e.alive = false;
-                    player.storedEnemy = { type: e.type || "walker" };
-                    gameState.status = "Dream critter inhaled!";
-                    updateUI();
-                    break;
-                }
+    // Collisions: projectiles vs enemies
+    for(const p of projectiles){
+      for(const e of enemies){
+        const d=Math.hypot(p.x-e.x,p.y-e.y);
+        if(d < p.r + e.r){
+          e.hp -= p.dmg;
+          addParticles(e.x,e.y,p.color,10);
+          Audio.play('hit');
+          score += 4;
+          if(p.split>0){
+            for(let i=0;i<p.split;i++){
+              const a=Util.rand()*Math.PI*2;
+              projectiles.push({ x:e.x, y:e.y, vx:Math.cos(a)*p.vx*0.6, vy:Math.sin(a)*p.vy*0.6, r:5, dmg:p.dmg*0.6, pierce:0, split:0, color:p.color, life:0.6 });
             }
+            p.split=0;
+          }
+          if(p.pierce>0){ p.pierce--; } else { p.life=0; }
         }
+      }
     }
 
-    // Shoot star
-    if (player.storedEnemy && input.shoot && player.shotCooldown <= 0) {
-        const speed = 6;
-        projectiles.push({
-            x: player.x + player.w / 2,
-            y: player.y + player.h / 2,
-            w: 12,
-            h: 12,
-            vx: speed * player.facing,
-            vy: 0,
-            life: 110
-        });
-        player.shotCooldown = 30;
-        player.storedEnemy = null;
-        gameState.status = "Star shot!";
-        updateUI();
+    // Enemy death & boss split
+    enemies = enemies.filter(e=>{
+      if(e.hp<=0){
+        score += e.score;
+        addParticles(e.x,e.y,'#ff2d6f',16);
+        if(e.type==='boss' && e.split>0){
+          for(let i=0;i<e.split;i++){
+            enemies.push({ type:'shard', hp:40, speed:1.4, x:e.x, y:e.y, vx:0, vy:0, r:14, score:20 });
+          }
+        } else if(Util.rand()<0.15){ spawnOrb(e.x,e.y, Util.rand()<0.5?'heal':'mana'); }
+        return false;
+      }
+      return true;
+    });
+
+    // Orbs pickup
+    orbs = orbs.filter(o=>{
+      o.ttl-=dt;
+      const d=Math.hypot(o.x-player.x,o.y-player.y);
+      if(d<14){
+        if(o.type==='heal') player.hp = Math.min(100, player.hp+12);
+        else player.mana = Math.min(100, player.mana+20);
+        addParticles(o.x,o.y, o.type==='heal'?'#7cff7c':'#00d4ff', 10);
+        return false;
+      }
+      return o.ttl>0;
+    });
+
+    // Player damage
+    for(const e of enemies){
+      const d=Math.hypot(e.x-player.x,e.y-player.y);
+      if(d < e.r+10 && player.inv<=0){
+        player.hp -= 8;
+        player.inv = 0.4;
+        addParticles(player.x,player.y,'#ff6b6b',12);
+        if(player.hp<=0) return end();
+      }
+    }
+    if(player.inv>0) player.inv-=dt;
+
+    // Wave clear
+    if(enemies.length===0){
+      wave++;
+      toast('Wave '+wave);
+      spawnWave(8 + Math.floor(wave*1.2));
     }
 
-    if (player.shotCooldown > 0) player.shotCooldown--;
+    // HUD
+    hud.score.textContent = Math.floor(score);
+    hud.wave.textContent = wave;
+    hud.hp.textContent = Math.max(0, Math.floor(player.hp));
+    hud.mana.textContent = Math.floor(player.mana);
 
-    input.justJump = false;
-}
+    // Toast decay
+    if(toastTimer>0){ toastTimer-=dt; if(toastTimer<=0) hud.toast.classList.remove('show'); }
+  }
 
-/* --------------------------------------------------------------
-   ENEMIES
-   -------------------------------------------------------------- */
+  // Draw
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    // Grid
+    ctx.fillStyle='#0b0f14'; ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle='#0f1622'; ctx.lineWidth=1;
+    for(let x=0;x<W;x+=40){ ctx.beginPath(); ctx.moveTo(x,60); ctx.lineTo(x,H); ctx.stroke(); }
+    for(let y=60;y<H;y+=40){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
 
-function updateEnemies() {
-    const level = levels[gameState.currentLevel];
-    for (const e of level.enemies) {
-        if (!e.alive) continue;
+    // Header
+    ctx.fillStyle='#0e141d'; ctx.fillRect(0,0,W,48);
+    ctx.fillStyle='#9fb3c8'; ctx.font='12px system-ui';
+    ctx.fillText('Shardstorm — procedural spells, relic synergies, evolving shard bosses', 12, 30);
 
-        // Basic horizontal patrol
-        e.x += e.vx;
-        if (e.x < e.patrolMin) {
-            e.x = e.patrolMin;
-            e.vx *= -1;
-        } else if (e.x + e.w > e.patrolMax) {
-            e.x = e.patrolMax - e.w;
-            e.vx *= -1;
-        }
-
-        // Collide with player
-        if (!player.sucking && aabb(player, e)) {
-            const prevY = player.y - player.vy;
-            if (prevY + player.h <= e.y && player.vy > 0) {
-                // stomp
-                e.alive = false;
-                player.vy = player.jumpForce * 0.7;
-                gameState.status = "Boing!";
-                updateUI();
-            } else {
-                // hurt
-                loseLife();
-                return;
-            }
-        }
-    }
-}
-
-/* --------------------------------------------------------------
-   PROJECTILES
-   -------------------------------------------------------------- */
-
-const projectiles = [];
-
-function updateProjectiles() {
-    const level = levels[gameState.currentLevel];
-
-    for (let i = projectiles.length - 1; i >= 0; i--) {
-        const s = projectiles[i];
-        s.x += s.vx;
-        s.y += s.vy;
-        s.life--;
-        if (s.life <= 0 || s.x < -50 || s.x > W + 50) {
-            projectiles.splice(i, 1);
-            continue;
-        }
-
-        let hit = false;
-        for (const e of level.enemies) {
-            if (!e.alive) continue;
-            if (aabb(s, e)) {
-                e.alive = false;
-                hit = true;
-                gameState.status = "Enemy hit!";
-                updateUI();
-                break;
-            }
-        }
-
-        if (hit) {
-            projectiles.splice(i, 1);
-        }
-    }
-}
-
-/* --------------------------------------------------------------
-   LEVEL DEFINITIONS (10 LEVELS)
-   -------------------------------------------------------------- */
-
-const levels = [];
-
-/*
- Level object shape:
- {
-    name: string,
-    theme: string,
-    spawn: { x, y },
-    goal: { x, y, w, h },
-    background: {
-        top: color,
-        bottom: color
-    },
-    platforms: [ {x,y,w,h}, ... ],
-    spikes:    [ {x,y,w,h}, ... ],
-    stars:     [ {x,y,w,h,collected:false}, ... ],
-    enemies:   [ {x,y,w,h,vx,patrolMin,patrolMax,alive:true,type:"walker"}, ... ]
- }
-*/
-
-// helper function to make stars easily
-function makeStar(x, y) {
-    return { x, y, w: 18, h: 18, collected: false };
-}
-
-// LEVEL 1 – soft tutorial
-levels.push({
-    name: "Pastel Plains",
-    theme: "gentle",
-    spawn: { x: 60, y: 360 },
-    goal: { x: 860, y: 260, w: 48, h: 60 },
-    background: {
-        top: "#6b9cff",
-        bottom: "#271544"
-    },
-    platforms: [
-        { x: 0, y: 460, w: 960, h: 80 },
-        { x: 150, y: 380, w: 150, h: 20 },
-        { x: 340, y: 330, w: 160, h: 20 },
-        { x: 540, y: 290, w: 160, h: 20 },
-        { x: 760, y: 270, w: 160, h: 20 }
-    ],
-    spikes: [
-        { x: 300, y: 440, w: 60, h: 20 }
-    ],
-    stars: [
-        makeStar(190, 340),
-        makeStar(380, 290),
-        makeStar(580, 250),
-        makeStar(800, 230)
-    ],
-    enemies: [
-        { x: 250, y: 432, w: 26, h: 28, vx: 1.0, patrolMin: 200, patrolMax: 340, alive: true, type: "walker" },
-        { x: 620, y: 432, w: 26, h: 28, vx: -1.0, patrolMin: 560, patrolMax: 720, alive: true, type: "walker" }
-    ]
-});
-
-// LEVEL 2 – vertical steps
-levels.push({
-    name: "Cotton Rise",
-    theme: "stairs",
-    spawn: { x: 70, y: 380 },
-    goal: { x: 880, y: 210, w: 48, h: 60 },
-    background: {
-        top: "#89e1ff",
-        bottom: "#24142f"
-    },
-    platforms: [
-        { x: 0, y: 460, w: 960, h: 80 },
-        { x: 160, y: 400, w: 120, h: 20 },
-        { x: 320, y: 360, w: 120, h: 20 },
-        { x: 480, y: 320, w: 120, h: 20 },
-        { x: 640, y: 280, w: 120, h: 20 },
-        { x: 800, y: 240, w: 120, h: 20 }
-    ],
-    spikes: [
-        { x: 260, y: 440, w: 80, h: 20 },
-        { x: 520, y: 440, w: 80, h: 20 }
-    ],
-    stars: [
-        makeStar(190, 360),
-        makeStar(350, 320),
-        makeStar(510, 280),
-        makeStar(670, 240),
-        makeStar(830, 200)
-    ],
-    enemies: [
-        { x: 210, y: 432, w: 26, h: 28, vx: 1.3, patrolMin: 160, patrolMax: 260, alive: true, type: "walker" },
-        { x: 430, y: 432, w: 26, h: 28, vx: -1.4, patrolMin: 380, patrolMax: 520, alive: true, type: "walker" },
-        { x: 690, y: 432, w: 26, h: 28, vx: 1.4, patrolMin: 640, patrolMax: 780, alive: true, type: "walker" }
-    ]
-});
-
-// LEVEL 3 – gaps
-levels.push({
-    name: "Bubble Chasm",
-    theme: "gaps",
-    spawn: { x: 60, y: 360 },
-    goal: { x: 880, y: 320, w: 48, h: 60 },
-    background: {
-        top: "#5de6ff",
-        bottom: "#1e1231"
-    },
-    platforms: [
-        { x: 0, y: 460, w: 260, h: 80 },
-        { x: 360, y: 460, w: 220, h: 80 },
-        { x: 640, y: 460, w: 320, h: 80 },
-
-        { x: 160, y: 380, w: 120, h: 20 },
-        { x: 400, y: 340, w: 140, h: 20 },
-        { x: 680, y: 320, w: 160, h: 20 }
-    ],
-    spikes: [
-        { x: 260, y: 440, w: 80, h: 20 },
-        { x: 580, y: 440, w: 80, h: 20 }
-    ],
-    stars: [
-        makeStar(190, 340),
-        makeStar(440, 300),
-        makeStar(720, 280)
-    ],
-    enemies: [
-        { x: 130, y: 432, w: 26, h: 28, vx: 1.2, patrolMin: 40, patrolMax: 220, alive: true, type: "walker" },
-        { x: 450, y: 432, w: 26, h: 28, vx: -1.7, patrolMin: 380, patrolMax: 560, alive: true, type: "walker" },
-        { x: 730, y: 432, w: 26, h: 28, vx: 1.7, patrolMin: 660, patrolMax: 880, alive: true, type: "walker" }
-    ]
-});
-
-// LEVEL 4 – little maze style
-levels.push({
-    name: "Lollipop Lattice",
-    theme: "maze-ish",
-    spawn: { x: 60, y: 420 },
-    goal: { x: 880, y: 180, w: 48, h: 60 },
-    background: {
-        top: "#ffb6ff",
-        bottom: "#2b1544"
-    },
-    platforms: [
-        { x: 0, y: 480, w: 960, h: 60 },
-
-        { x: 100, y: 420, w: 180, h: 20 },
-        { x: 360, y: 420, w: 180, h: 20 },
-        { x: 620, y: 420, w: 180, h: 20 },
-
-        { x: 40, y: 340, w: 140, h: 20 },
-        { x: 300, y: 340, w: 140, h: 20 },
-        { x: 560, y: 340, w: 140, h: 20 },
-        { x: 820, y: 340, w: 140, h: 20 },
-
-        { x: 180, y: 260, w: 140, h: 20 },
-        { x: 440, y: 260, w: 140, h: 20 },
-        { x: 700, y: 260, w: 140, h: 20 },
-
-        { x: 260, y: 180, w: 120, h: 20 },
-        { x: 520, y: 180, w: 120, h: 20 },
-        { x: 780, y: 180, w: 120, h: 20 }
-    ],
-    spikes: [
-        { x: 260, y: 460, w: 80, h: 20 },
-        { x: 520, y: 460, w: 80, h: 20 },
-        { x: 780, y: 460, w: 80, h: 20 },
-        { x: 460, y: 320, w: 40, h: 20 },
-        { x: 720, y: 320, w: 40, h: 20 }
-    ],
-    stars: [
-        makeStar(140, 390),
-        makeStar(400, 390),
-        makeStar(660, 390),
-        makeStar(350, 310),
-        makeStar(610, 310),
-        makeStar(870, 310),
-        makeStar(230, 230),
-        makeStar(490, 230),
-        makeStar(750, 230)
-    ],
-    enemies: [
-        { x: 130, y: 398, w: 26, h: 28, vx: 1.1, patrolMin: 100, patrolMax: 260, alive: true, type: "walker" },
-        { x: 390, y: 398, w: 26, h: 28, vx: -1.5, patrolMin: 360, patrolMax: 520, alive: true, type: "walker" },
-        { x: 650, y: 398, w: 26, h: 28, vx: 1.7, patrolMin: 620, patrolMax: 780, alive: true, type: "walker" },
-        { x: 470, y: 318, w: 26, h: 28, vx: 1.4, patrolMin: 440, patrolMax: 560, alive: true, type: "walker" }
-    ]
-});
-
-// LEVEL 5 – narrow pillars & float
-levels.push({
-    name: "Star Columns",
-    theme: "pillars",
-    spawn: { x: 80, y: 380 },
-    goal: { x: 880, y: 150, w: 48, h: 60 },
-    background: {
-        top: "#f9f871",
-        bottom: "#301043"
-    },
-    platforms: [
-        { x: 0, y: 480, w: 960, h: 60 },
-        { x: 120, y: 400, w: 70, h: 20 },
-        { x: 240, y: 340, w: 70, h: 20 },
-        { x: 360, y: 280, w: 70, h: 20 },
-        { x: 480, y: 220, w: 70, h: 20 },
-        { x: 600, y: 260, w: 70, h: 20 },
-        { x: 720, y: 220, w: 70, h: 20 },
-        { x: 840, y: 180, w: 70, h: 20 }
-    ],
-    spikes: [
-        { x: 180, y: 460, w: 80, h: 20 },
-        { x: 360, y: 460, w: 80, h: 20 },
-        { x: 540, y: 460, w: 80, h: 20 },
-        { x: 720, y: 460, w: 80, h: 20 }
-    ],
-    stars: [
-        makeStar(130, 360),
-        makeStar(250, 300),
-        makeStar(370, 240),
-        makeStar(490, 180),
-        makeStar(610, 220),
-        makeStar(730, 180),
-        makeStar(850, 140)
-    ],
-    enemies: [
-        { x: 260, y: 448, w: 26, h: 28, vx: 1.8, patrolMin: 200, patrolMax: 360, alive: true, type: "walker" },
-        { x: 540, y: 448, w: 26, h: 28, vx: -1.9, patrolMin: 480, patrolMax: 640, alive: true, type: "walker" },
-        { x: 760, y: 448, w: 26, h: 28, vx: 2.0, patrolMin: 700, patrolMax: 880, alive: true, type: "walker" }
-    ]
-});
-
-// LEVEL 6 – faster enemies
-levels.push({
-    name: "Moonlit Sprint",
-    theme: "speed",
-    spawn: { x: 80, y: 380 },
-    goal: { x: 880, y: 210, w: 48, h: 60 },
-    background: {
-        top: "#d7e1ff",
-        bottom: "#151b3a"
-    },
-    platforms: [
-        { x: 0, y: 480, w: 960, h: 60 },
-        { x: 140, y: 400, w: 120, h: 20 },
-        { x: 340, y: 360, w: 120, h: 20 },
-        { x: 540, y: 320, w: 120, h: 20 },
-        { x: 740, y: 300, w: 120, h: 20 },
-        { x: 860, y: 260, w: 120, h: 20 }
-    ],
-    spikes: [
-        { x: 260, y: 460, w: 80, h: 20 },
-        { x: 460, y: 460, w: 80, h: 20 },
-        { x: 660, y: 460, w: 80, h: 20 }
-    ],
-    stars: [
-        makeStar(170, 360),
-        makeStar(370, 320),
-        makeStar(570, 280),
-        makeStar(770, 260),
-        makeStar(890, 220)
-    ],
-    enemies: [
-        { x: 150, y: 448, w: 26, h: 28, vx: 1.6, patrolMin: 80, patrolMax: 260, alive: true, type: "walker" },
-        { x: 350, y: 448, w: 26, h: 28, vx: -1.8, patrolMin: 280, patrolMax: 460, alive: true, type: "walker" },
-        { x: 550, y: 448, w: 26, h: 28, vx: 2.0, patrolMin: 480, patrolMax: 660, alive: true, type: "walker" },
-        { x: 750, y: 448, w: 26, h: 28, vx: -2.1, patrolMin: 680, patrolMax: 880, alive: true, type: "walker" }
-    ]
-});
-
-// LEVEL 7 – more maze
-levels.push({
-    name: "Nebula Hearts",
-    theme: "complex",
-    spawn: { x: 70, y: 410 },
-    goal: { x: 880, y: 170, w: 48, h: 60 },
-    background: {
-        top: "#ffb3d1",
-        bottom: "#211032"
-    },
-    platforms: [
-        { x: 0, y: 480, w: 960, h: 60 },
-        { x: 90, y: 420, w: 160, h: 20 },
-        { x: 340, y: 420, w: 160, h: 20 },
-        { x: 590, y: 420, w: 160, h: 20 },
-
-        { x: 200, y: 340, w: 130, h: 20 },
-        { x: 470, y: 340, w: 130, h: 20 },
-        { x: 740, y: 340, w: 130, h: 20 },
-
-        { x: 120, y: 260, w: 130, h: 20 },
-        { x: 390, y: 260, w: 130, h: 20 },
-        { x: 660, y: 260, w: 130, h: 20 },
-
-        { x: 260, y: 190, w: 120, h: 20 },
-        { x: 530, y: 190, w: 120, h: 20 },
-        { x: 800, y: 190, w: 120, h: 20 }
-    ],
-    spikes: [
-        { x: 300, y: 460, w: 60, h: 20 },
-        { x: 500, y: 460, w: 60, h: 20 },
-        { x: 700, y: 460, w: 60, h: 20 },
-        { x: 410, y: 320, w: 40, h: 20 },
-        { x: 680, y: 320, w: 40, h: 20 }
-    ],
-    stars: [
-        makeStar(130, 390),
-        makeStar(380, 390),
-        makeStar(630, 390),
-        makeStar(240, 310),
-        makeStar(510, 310),
-        makeStar(780, 310),
-        makeStar(150, 230),
-        makeStar(420, 230),
-        makeStar(690, 230),
-        makeStar(280, 160),
-        makeStar(550, 160),
-        makeStar(820, 160)
-    ],
-    enemies: [
-        { x: 130, y: 398, w: 26, h: 28, vx: 1.3, patrolMin: 90, patrolMax: 250, alive: true, type: "walker" },
-        { x: 380, y: 398, w: 26, h: 28, vx: -1.6, patrolMin: 340, patrolMax: 510, alive: true, type: "walker" },
-        { x: 630, y: 398, w: 26, h: 28, vx: 1.8, patrolMin: 590, patrolMax: 770, alive: true, type: "walker" },
-        { x: 510, y: 318, w: 26, h: 28, vx: -1.5, patrolMin: 470, patrolMax: 600, alive: true, type: "walker" }
-    ]
-});
-
-// LEVEL 8 – ceilings & float
-levels.push({
-    name: "Ceiling Dreams",
-    theme: "float",
-    spawn: { x: 70, y: 410 },
-    goal: { x: 880, y: 150, w: 48, h: 60 },
-    background: {
-        top: "#fff0b3",
-        bottom: "#261037"
-    },
-    platforms: [
-        { x: 0, y: 480, w: 960, h: 60 },
-        { x: 140, y: 420, w: 120, h: 20 },
-        { x: 320, y: 380, w: 120, h: 20 },
-        { x: 500, y: 340, w: 120, h: 20 },
-        { x: 680, y: 300, w: 120, h: 20 },
-        { x: 860, y: 260, w: 120, h: 20 },
-        { x: 220, y: 260, w: 90, h: 20 },
-        { x: 400, y: 220, w: 90, h: 20 },
-        { x: 580, y: 200, w: 90, h: 20 },
-        { x: 760, y: 180, w: 90, h: 20 }
-    ],
-    spikes: [
-        { x: 260, y: 460, w: 90, h: 20 },
-        { x: 480, y: 460, w: 90, h: 20 },
-        { x: 700, y: 460, w: 90, h: 20 }
-    ],
-    stars: [
-        makeStar(170, 380),
-        makeStar(350, 340),
-        makeStar(530, 300),
-        makeStar(710, 260),
-        makeStar(250, 220),
-        makeStar(430, 180),
-        makeStar(610, 160),
-        makeStar(790, 140)
-    ],
-    enemies: [
-        { x: 200, y: 448, w: 26, h: 28, vx: 1.5, patrolMin: 140, patrolMax: 260, alive: true, type: "walker" },
-        { x: 400, y: 448, w: 26, h: 28, vx: -1.7, patrolMin: 320, patrolMax: 480, alive: true, type: "walker" },
-        { x: 600, y: 448, w: 26, h: 28, vx: 1.9, patrolMin: 520, patrolMax: 680, alive: true, type: "walker" },
-        { x: 800, y: 448, w: 26, h: 28, vx: -2.1, patrolMin: 720, patrolMax: 880, alive: true, type: "walker" }
-    ]
-});
-
-// LEVEL 9 – dense spiky
-levels.push({
-    name: "Starstorm Steps",
-    theme: "dense",
-    spawn: { x: 70, y: 410 },
-    goal: { x: 880, y: 120, w: 48, h: 60 },
-    background: {
-        top: "#ffd68f",
-        bottom: "#2b1035"
-    },
-    platforms: [
-        { x: 0, y: 480, w: 960, h: 60 },
-        { x: 140, y: 420, w: 120, h: 20 },
-        { x: 320, y: 380, w: 120, h: 20 },
-        { x: 500, y: 340, w: 120, h: 20 },
-        { x: 680, y: 300, w: 120, h: 20 },
-        { x: 860, y: 260, w: 120, h: 20 },
-        { x: 220, y: 320, w: 90, h: 20 },
-        { x: 400, y: 280, w: 90, h: 20 },
-        { x: 580, y: 240, w: 90, h: 20 },
-        { x: 760, y: 200, w: 90, h: 20 },
-        { x: 360, y: 160, w: 90, h: 20 },
-        { x: 640, y: 140, w: 90, h: 20 }
-    ],
-    spikes: [
-        { x: 260, y: 460, w: 80, h: 20 },
-        { x: 480, y: 460, w: 80, h: 20 },
-        { x: 700, y: 460, w: 80, h: 20 },
-        { x: 380, y: 320, w: 40, h: 20 },
-        { x: 560, y: 280, w: 40, h: 20 },
-        { x: 740, y: 240, w: 40, h: 20 }
-    ],
-    stars: [
-        makeStar(170, 380),
-        makeStar(350, 340),
-        makeStar(530, 300),
-        makeStar(710, 260),
-        makeStar(250, 280),
-        makeStar(430, 240),
-        makeStar(610, 200),
-        makeStar(790, 160),
-        makeStar(380, 120),
-        makeStar(660, 100)
-    ],
-    enemies: [
-        { x: 160, y: 448, w: 26, h: 28, vx: 1.9, patrolMin: 120, patrolMax: 260, alive: true, type: "walker" },
-        { x: 360, y: 448, w: 26, h: 28, vx: -2.1, patrolMin: 320, patrolMax: 480, alive: true, type: "walker" },
-        { x: 560, y: 448, w: 26, h: 28, vx: 2.2, patrolMin: 520, patrolMax: 680, alive: true, type: "walker" },
-        { x: 760, y: 448, w: 26, h: 28, vx: -2.4, patrolMin: 720, patrolMax: 880, alive: true, type: "walker" },
-        { x: 430, y: 318, w: 26, h: 28, vx: -1.8, patrolMin: 380, patrolMax: 540, alive: true, type: "walker" }
-    ]
-});
-
-// LEVEL 10 – finale
-levels.push({
-    name: "Dream Core",
-    theme: "final",
-    spawn: { x: 80, y: 420 },
-    goal: { x: 880, y: 90, w: 48, h: 70 },
-    background: {
-        top: "#ff8a8a",
-        bottom: "#2d0d29"
-    },
-    platforms: [
-        { x: 0, y: 480, w: 960, h: 60 },
-        { x: 120, y: 420, w: 120, h: 20 },
-        { x: 300, y: 380, w: 120, h: 20 },
-        { x: 480, y: 340, w: 120, h: 20 },
-        { x: 660, y: 300, w: 120, h: 20 },
-        { x: 840, y: 260, w: 120, h: 20 },
-        { x: 200, y: 320, w: 90, h: 20 },
-        { x: 380, y: 280, w: 90, h: 20 },
-        { x: 560, y: 240, w: 90, h: 20 },
-        { x: 740, y: 200, w: 90, h: 20 },
-        { x: 320, y: 160, w: 90, h: 20 },
-        { x: 640, y: 130, w: 90, h: 20 }
-    ],
-    spikes: [
-        { x: 200, y: 460, w: 60, h: 20 },
-        { x: 360, y: 460, w: 60, h: 20 },
-        { x: 520, y: 460, w: 60, h: 20 },
-        { x: 680, y: 460, w: 60, h: 20 },
-        { x: 840, y: 460, w: 60, h: 20 },
-        { x: 420, y: 320, w: 40, h: 20 },
-        { x: 600, y: 280, w: 40, h: 20 },
-        { x: 780, y: 240, w: 40, h: 20 }
-    ],
-    stars: [
-        makeStar(150, 380),
-        makeStar(330, 340),
-        makeStar(510, 300),
-        makeStar(690, 260),
-        makeStar(230, 280),
-        makeStar(410, 240),
-        makeStar(590, 200),
-        makeStar(770, 160),
-        makeStar(340, 120),
-        makeStar(660, 90)
-    ],
-    enemies: [
-        { x: 160, y: 448, w: 26, h: 28, vx: 2.1, patrolMin: 120, patrolMax: 260, alive: true, type: "walker" },
-        { x: 360, y: 448, w: 26, h: 28, vx: -2.3, patrolMin: 320, patrolMax: 480, alive: true, type: "walker" },
-        { x: 560, y: 448, w: 26, h: 28, vx: 2.5, patrolMin: 520, patrolMax: 680, alive: true, type: "walker" },
-        { x: 760, y: 448, w: 26, h: 28, vx: -2.7, patrolMin: 720, patrolMax: 880, alive: true, type: "walker" },
-        { x: 430, y: 318, w: 26, h: 28, vx: 2.0, patrolMin: 380, patrolMax: 540, alive: true, type: "walker" },
-        { x: 610, y: 278, w: 26, h: 28, vx: -2.1, patrolMin: 560, patrolMax: 720, alive: true, type: "walker" }
-    ]
-});
-
-/* --------------------------------------------------------------
-   LEVEL RESET / FLOW
-   -------------------------------------------------------------- */
-
-function resetLevel(index) {
-    const level = levels[index];
-    for (const s of level.stars) {
-        s.collected = false;
-    }
-    for (const e of level.enemies) {
-        e.alive = true;
-    }
-    projectiles.length = 0;
-    resetPlayer(level);
-    gameState.status = `Level ${index + 1}: ${level.name}`;
-    updateUI();
-}
-
-function loseLife() {
-    gameState.lives--;
-    if (gameState.lives <= 0) {
-        showGameOver();
-    } else {
-        resetLevel(gameState.currentLevel);
-    }
-    updateUI();
-}
-
-function finishLevel() {
-    gameState.transition = true;
-    if (gameState.currentLevel >= gameState.totalLevels - 1) {
-        // all clear
-        showAllClear();
-    } else {
-        uiCenter.innerHTML = `
-            <h1>Level ${gameState.currentLevel + 1} Cleared!</h1>
-            <p>You collected <strong>${gameState.stars}</strong> stars so far.</p>
-            <button id="btn-next" class="btn">Next Level</button>
-            <button id="btn-retry-lvl" class="btn btn-secondary">Retry Level</button>
-            <div class="ui-small">
-                Sometimes replaying a level lets you squeeze out a few extra stars.
-            </div>
-        `;
-        uiCenter.classList.remove("hidden");
-        const btnNext = document.getElementById("btn-next");
-        const btnRetryLvl = document.getElementById("btn-retry-lvl");
-
-        btnNext.onclick = () => {
-            uiCenter.classList.add("hidden");
-            gameState.currentLevel++;
-            resetLevel(gameState.currentLevel);
-            gameState.transition = false;
-        };
-        btnRetryLvl.onclick = () => {
-            uiCenter.classList.add("hidden");
-            resetLevel(gameState.currentLevel);
-            gameState.transition = false;
-        };
-    }
-}
-
-/* --------------------------------------------------------------
-   GAME OVER / ALL CLEAR SCREENS
-   -------------------------------------------------------------- */
-
-function showGameOver() {
-    gameState.gameOver = true;
-    gameState.running = false;
-    gameState.status = "Game Over";
-    uiCenter.innerHTML = `
-        <h1>Game Over</h1>
-        <p>You reached level <strong>${gameState.currentLevel + 1}</strong> and collected
-           <strong>${gameState.stars}</strong> stars.</p>
-        <button id="btn-restart" class="btn">Play Again</button>
-        <button id="btn-menu" class="btn btn-secondary">Back to Title</button>
-        <div class="ui-small">
-            Every run is a chance to find new routes and snag more stars.
-        </div>
-    `;
-    uiCenter.classList.remove("hidden");
-
-    const btnRestart = document.getElementById("btn-restart");
-    const btnMenu = document.getElementById("btn-menu");
-
-    btnRestart.onclick = () => {
-        uiCenter.classList.add("hidden");
-        softResetGame();
-    };
-    btnMenu.onclick = () => {
-        uiCenter.classList.add("hidden");
-        hardResetToTitle();
-    };
-    updateUI();
-}
-
-function showAllClear() {
-    gameState.allClear = true;
-    gameState.running = false;
-    gameState.status = "Dream Complete!";
-    uiCenter.innerHTML = `
-        <h1>Dream Core Reached!</h1>
-        <p>You cleared all <strong>10</strong> levels and collected
-           <strong>${gameState.stars}</strong> stars in total.</p>
-        <button id="btn-again" class="btn">Play Again</button>
-        <button id="btn-title" class="btn btn-secondary">Back to Title</button>
-        <div class="ui-small">
-            Try speedrunning it, racing friends, or forking this file and remixing the levels.
-        </div>
-    `;
-    uiCenter.classList.remove("hidden");
-
-    const btnAgain = document.getElementById("btn-again");
-    const btnTitle = document.getElementById("btn-title");
-
-    btnAgain.onclick = () => {
-        uiCenter.classList.add("hidden");
-        softResetGame();
-    };
-    btnTitle.onclick = () => {
-        uiCenter.classList.add("hidden");
-        hardResetToTitle();
-    };
-    updateUI();
-}
-
-/* --------------------------------------------------------------
-   RESET HELPERS
-   -------------------------------------------------------------- */
-
-function softResetGame() {
-    gameState.currentLevel = 0;
-    gameState.lives = 3;
-    gameState.stars = 0;
-    gameState.running = true;
-    gameState.gameOver = false;
-    gameState.allClear = false;
-    gameState.transition = false;
-    resetLevel(0);
-}
-
-function hardResetToTitle() {
-    gameState.currentLevel = 0;
-    gameState.lives = 3;
-    gameState.stars = 0;
-    gameState.running = false;
-    gameState.gameOver = false;
-    gameState.allClear = false;
-    gameState.transition = false;
-    gameState.status = "Press Start";
-    updateUI();
-
-    uiCenter.innerHTML = `
-        <h1>Dream Puff Odyssey</h1>
-        <p>
-            Float through pastel skies, inhale dream critters,
-            and spit starlight across ten cozy levels.
-        </p>
-        <p>
-            This entire game lives in a single
-            <strong>index.html</strong> file – fork it, remix it, make it yours.
-        </p>
-        <button id="btn-start" class="btn">Start New Journey</button>
-        <button id="btn-how" class="btn btn-secondary">How to Play</button>
-        <div class="ui-small" id="ui-help">
-            Move with <span class="kbd">←</span><span class="kbd">→</span> or <span class="kbd">A</span><span class="kbd">D</span>,
-            jump with <span class="kbd">↑</span> / <span class="kbd">W</span> / <span class="kbd">Space</span>.<br />
-            Hold jump to float, inhale with <span class="kbd">J</span>, spit a star with <span class="kbd">K</span>. Restart level with
-            <span class="kbd">R</span>, pause with <span class="kbd">Esc</span>.
-        </div>
-    `;
-    uiCenter.classList.remove("hidden");
-
-    // re-wire buttons
-    const newStart = document.getElementById("btn-start");
-    const newHow = document.getElementById("btn-how");
-    const newHelp = document.getElementById("ui-help");
-    newStart.onclick = () => {
-        uiCenter.classList.add("hidden");
-        gameState.running = true;
-        softResetGame();
-    };
-    newHow.onclick = () => {
-        newHelp.classList.toggle("hidden");
-    };
-}
-
-/* --------------------------------------------------------------
-   DRAWING FUNCTIONS
-   -------------------------------------------------------------- */
-
-function drawBackground(level) {
-    const grad = ctx.createLinearGradient(0, 0, 0, H);
-    grad.addColorStop(0, level.background.top);
-    grad.addColorStop(1, level.background.bottom);
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, W, H);
-
-    // add some stars
-    ctx.fillStyle = "rgba(255,255,255,0.25)";
-    for (let i = 0; i < 60; i++) {
-        const x = (i * 79) % W;
-        const y = (i * 53 + (Date.now() * 0.02)) % H;
-        ctx.fillRect(x, y, 2, 2);
+    // Orbs
+    for(const o of orbs){
+      ctx.beginPath(); ctx.arc(o.x,o.y,o.r,0,Math.PI*2);
+      ctx.fillStyle = o.type==='heal'?'#7cff7c':'#00d4ff'; ctx.fill();
+      ctx.strokeStyle='#1f2a38'; ctx.stroke();
     }
 
-    // subtle horizon clouds
-    ctx.fillStyle = "rgba(255,255,255,0.12)";
-    ctx.beginPath();
-    ctx.ellipse(W * 0.25, H * 0.2, 120, 40, 0, 0, Math.PI * 2);
-    ctx.ellipse(W * 0.65, H * 0.16, 140, 50, 0, 0, Math.PI * 2);
-    ctx.fill();
-}
-
-function drawPlatform(p) {
-    ctx.fillStyle = "#2f3a7a";
-    ctx.fillRect(p.x, p.y, p.w, p.h);
-    ctx.strokeStyle = "#ffffff33";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(p.x, p.y, p.w, p.h);
-    // cloud fluff
-    ctx.fillStyle = "rgba(255,255,255,0.25)";
-    ctx.beginPath();
-    ctx.ellipse(p.x + p.w * 0.3, p.y, 16, 8, 0, 0, Math.PI * 2);
-    ctx.ellipse(p.x + p.w * 0.6, p.y + 2, 14, 7, 0, 0, Math.PI * 2);
-    ctx.fill();
-}
-
-function drawSpike(s) {
-    const count = Math.max(1, Math.floor(s.w / 12));
-    const step = s.w / count;
-    ctx.fillStyle = "#ff6699";
-    for (let i = 0; i < count; i++) {
-        const x1 = s.x + i * step;
-        const y1 = s.y + s.h;
-        const x2 = x1 + step / 2;
-        const y2 = s.y;
-        const x3 = x1 + step;
-        const y3 = s.y + s.h;
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.lineTo(x3, y3);
-        ctx.closePath();
-        ctx.fill();
-    }
-}
-
-function drawStarItem(star) {
-    const cx = star.x + star.w / 2;
-    const cy = star.y + star.h / 2;
-    const rOuter = star.w / 2;
-    const rInner = rOuter / 2.3;
-    ctx.save();
-    ctx.translate(cx, cy);
-    const t = Date.now() * 0.003;
-    ctx.rotate(t % (Math.PI * 2));
-    ctx.beginPath();
-    const spikes = 5;
-    for (let i = 0; i < spikes * 2; i++) {
-        const r = i % 2 === 0 ? rOuter : rInner;
-        const a = (Math.PI * 2 * i) / (spikes * 2);
-        ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
-    }
-    ctx.closePath();
-    ctx.fillStyle = "#ffe86a";
-    ctx.shadowColor = "#ffe86a";
-    ctx.shadowBlur = 12;
-    ctx.fill();
-    ctx.restore();
-}
-
-function drawGoal(goal) {
-    ctx.save();
-    const cx = goal.x + goal.w / 2;
-    const gy = goal.y;
-
-    // portal column
-    const g = ctx.createLinearGradient(goal.x, goal.y, goal.x, goal.y + goal.h);
-    g.addColorStop(0, "rgba(255,255,255,0.9)");
-    g.addColorStop(1, "rgba(168,85,247,0.7)");
-    ctx.globalAlpha = 0.8;
-    ctx.fillStyle = g;
-    ctx.fillRect(goal.x, goal.y, goal.w, goal.h);
-    ctx.globalAlpha = 1;
-
-    // ring
-    ctx.beginPath();
-    ctx.arc(cx, gy, 16, 0, Math.PI * 2);
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 3;
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.arc(cx, gy, 9, 0, Math.PI * 2);
-    ctx.fillStyle = "#ffe0f5";
-    ctx.fill();
-
-    ctx.restore();
-}
-
-function drawPlayer() {
-    ctx.save();
-    ctx.translate(player.x + player.w / 2, player.y + player.h / 2);
-    ctx.scale(player.facing, 1);
-
-    // body
-    ctx.fillStyle = player.colorBody;
-    ctx.strokeStyle = player.colorOutline;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, player.w / 2, player.h / 2, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    // eyes
-    ctx.fillStyle = "#221b4c";
-    ctx.beginPath();
-    ctx.ellipse(-6, -4, 4, 8, 0, 0, Math.PI * 2);
-    ctx.ellipse(6, -4, 4, 8, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // mouth
-    if (player.sucking) {
-        ctx.beginPath();
-        ctx.ellipse(0, 4, 7, 7, 0, 0, Math.PI * 2);
-        ctx.fillStyle = "#000000";
-        ctx.fill();
-    } else {
-        ctx.beginPath();
-        ctx.arc(0, 5, 6, 0, Math.PI, false);
-        ctx.strokeStyle = "#ff6497";
-        ctx.lineWidth = 2;
-        ctx.stroke();
+    // Enemies
+    for(const e of enemies){
+      ctx.beginPath(); ctx.arc(e.x,e.y,e.r,0,Math.PI*2);
+      ctx.fillStyle = e.type==='boss' ? '#ff2d6f' : (e.type==='brute' ? '#ffd166' : '#b388ff');
+      ctx.fill(); ctx.strokeStyle='#1f2a38'; ctx.stroke();
     }
 
-    // blush
-    ctx.fillStyle = "rgba(255,120,160,0.9)";
-    ctx.beginPath();
-    ctx.ellipse(-12, 6, 4, 3, 0, 0, Math.PI * 2);
-    ctx.ellipse(12, 6, 4, 3, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // float effect
-    if (player.floating) {
-        ctx.beginPath();
-        ctx.ellipse(0, player.h / 2, 12, 4, 0, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(255,255,255,0.15)";
-        ctx.fill();
+    // Projectiles
+    for(const p of projectiles){
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle=p.color; ctx.fill();
     }
 
-    ctx.restore();
+    // Particles
+    particles = particles.filter(pt=>{
+      pt.life-=dt; pt.x+=pt.vx*dt; pt.y+=pt.vy*dt; pt.vx*=0.98; pt.vy*=0.98;
+      if(pt.life>0){
+        ctx.globalAlpha=Math.max(0,pt.life);
+        ctx.fillStyle=pt.color; ctx.fillRect(pt.x,pt.y,3,3);
+        ctx.globalAlpha=1;
+        return true;
+      }
+      return false;
+    });
 
-    // inhale radius
-    if (player.sucking) {
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(
-            player.x + player.w / 2,
-            player.y + player.h / 2,
-            player.inhaleRadius,
-            0,
-            Math.PI * 2
-        );
-        ctx.strokeStyle = "rgba(255,255,255,0.18)";
-        ctx.lineWidth = 1;
-        ctx.setLineDash([5, 5]);
-        ctx.stroke();
-        ctx.restore();
-    }
+    // Player
+    ctx.beginPath(); ctx.arc(player.x,player.y,10,0,Math.PI*2);
+    ctx.fillStyle='#e8f0ff'; ctx.fill(); ctx.strokeStyle='#1f2a38'; ctx.stroke();
+  }
 
-    // star stored indicator
-    if (player.storedEnemy) {
-        ctx.save();
-        const x = player.x + player.w / 2 + player.facing * 20;
-        const y = player.y - 8;
-        ctx.translate(x, y);
-        ctx.beginPath();
-        ctx.arc(0, 0, 6, 0, Math.PI * 2);
-        ctx.fillStyle = "#ffe86a";
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = "#ffe86a";
-        ctx.fill();
-        ctx.restore();
-    }
-}
+  function loop(){ update(); draw(); requestAnimationFrame(loop); }
 
-function drawEnemies() {
-    const level = levels[gameState.currentLevel];
-    for (const e of level.enemies) {
-        if (!e.alive) continue;
-        ctx.save();
-        ctx.translate(e.x + e.w / 2, e.y + e.h / 2);
-        const dir = e.vx >= 0 ? 1 : -1;
-        ctx.scale(dir, 1);
+  function start(seed){
+    Audio.init();
+    Util.setSeed(seed); seedVal=seed;
+    hud.seed.textContent = seed;
+    hud.start.classList.add('hidden'); hud.gameover.classList.add('hidden');
+    score=0; wave=1; player.hp=100; player.mana=100; player.dash=0; player.inv=0;
+    projectiles=[]; enemies=[]; particles=[]; orbs=[];
+    buildSpells(); spawnWave(10);
+    running=true;
+  }
 
-        ctx.fillStyle = "#b3ffe0";
-        ctx.strokeStyle = "#28b894";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.ellipse(0, 0, e.w / 2, e.h / 2, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
+  function end(){
+    running=false;
+    hud.finalScore.textContent = Math.floor(score);
+    hud.finalWave.textContent = wave;
+    hud.gameover.classList.remove('hidden');
+    saveScore();
+  }
 
-        ctx.fillStyle = "#14202b";
-        ctx.beginPath();
-        ctx.arc(-4, -4, 2.5, 0, Math.PI * 2);
-        ctx.arc(4, -4, 2.5, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.restore();
-    }
-}
-
-function drawProjectiles() {
-    for (const s of projectiles) {
-        const cx = s.x + s.w / 2;
-        const cy = s.y + s.h / 2;
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate((Date.now() * 0.01) % (Math.PI * 2));
-        ctx.beginPath();
-        ctx.moveTo(0, -6);
-        ctx.lineTo(6, 0);
-        ctx.lineTo(0, 6);
-        ctx.lineTo(-6, 0);
-        ctx.closePath();
-        ctx.fillStyle = "#ffe86a";
-        ctx.shadowBlur = 12;
-        ctx.shadowColor = "#ffe86a";
-        ctx.fill();
-        ctx.restore();
-    }
-}
-
-/* --------------------------------------------------------------
-   UI UPDATE
-   -------------------------------------------------------------- */
-
-function updateUI() {
-    uiLevel.textContent = `Level: ${gameState.currentLevel + 1} / ${gameState.totalLevels}`;
-    uiLives.textContent = `Lives: ${gameState.lives}`;
-    uiStars.textContent = `Stars: ${gameState.stars}`;
-    uiStatus.textContent = gameState.status;
-}
-
-/* --------------------------------------------------------------
-   PAUSE HANDLING
-   -------------------------------------------------------------- */
-
-function togglePause() {
-    if (!gameState.running) return;
-    gameState.paused = !gameState.paused;
-    if (gameState.paused) {
-        gameState.status = "Paused";
-        uiCenter.innerHTML = `
-            <h1>Paused</h1>
-            <p>Take a breath, Commander Puff.</p>
-            <button id="btn-resume" class="btn">Resume</button>
-            <button id="btn-title2" class="btn btn-secondary">Back to Title</button>
-            <div class="ui-small">You can always return later – the dream waits.</div>
-        `;
-        uiCenter.classList.remove("hidden");
-        const btnRes = document.getElementById("btn-resume");
-        const btnTitle2 = document.getElementById("btn-title2");
-
-        btnRes.onclick = () => {
-            uiCenter.classList.add("hidden");
-            gameState.paused = false;
-            gameState.status = `Level ${gameState.currentLevel + 1}: ${levels[gameState.currentLevel].name}`;
-            updateUI();
-        };
-        btnTitle2.onclick = () => {
-            uiCenter.classList.add("hidden");
-            hardResetToTitle();
-        };
-    } else {
-        uiCenter.classList.add("hidden");
-        gameState.status = `Level ${gameState.currentLevel + 1}: ${levels[gameState.currentLevel].name}`;
-    }
-    updateUI();
-}
-
-/* --------------------------------------------------------------
-   MAIN LOOP
-   -------------------------------------------------------------- */
-
-let lastTime = 0;
-
-function loop(timestamp) {
-    const dt = timestamp - lastTime;
-    lastTime = timestamp;
-
-    // Handle pause toggle
-    if (input.pauseToggle) {
-        input.pauseToggle = false;
-        togglePause();
-    }
-
-    if (gameState.running && !gameState.paused && !gameState.transition) {
-        updatePlayer();
-        updateEnemies();
-        updateProjectiles();
-        if (input.restart) {
-            input.restart = false;
-            resetLevel(gameState.currentLevel);
-        }
-    }
-
-    // Render
-    const level = levels[gameState.currentLevel];
-    drawBackground(level);
-
-    // platforms
-    for (const p of level.platforms) drawPlatform(p);
-
-    // spikes
-    for (const s of level.spikes) drawSpike(s);
-
-    // stars
-    for (const star of level.stars) {
-        if (!star.collected) drawStarItem(star);
-    }
-
-    // goal
-    drawGoal(level.goal);
-
-    // enemies, player, projectiles
-    drawEnemies();
-    drawPlayer();
-    drawProjectiles();
-
-    requestAnimationFrame(loop);
-}
-
-/* --------------------------------------------------------------
-   TITLE SCREEN BUTTONS
-   -------------------------------------------------------------- */
-
-btnStart.onclick = () => {
-    uiCenter.classList.add("hidden");
-    gameState.running = true;
-    softResetGame();
-};
-
-btnHow.onclick = () => {
-    uiHelp.classList.toggle("hidden");
-};
-
-/* --------------------------------------------------------------
-   INITIALIZE
-   -------------------------------------------------------------- */
-
-updateUI();
-requestAnimationFrame(loop);
-
-/* ==================================================================
-   END OF GAME SCRIPT
-   ================================================================== */
-
-/*
-=====================================================================
-NOTE:
-This file is intentionally long (~2000 lines) with full HTML, CSS and
-JS in one place so you can simply drop it into a GitHub repository as
-index.html and run it via GitHub Pages with zero build tools.
-
-Feel totally free to:
- - Change level layouts
- - Add sprites or images
- - Hook up sound effects
- - Split JS/CSS into separate files
- - Turn this into your own viral game
-
-Fork, remix, enjoy.
-=====================================================================
-*/
+  // Boot
+  renderLeader(JSON.parse(localStorage.getItem('shardstorm_scores')||'[]'));
+  loop();
+})();
 </script>
 </body>
 </html>
