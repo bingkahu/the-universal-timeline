@@ -1,270 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>dick sucking speed sex game</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+    html, body {
+        margin: 0;
+        padding: 0;
+        background: #111;
+        overflow: hidden;
+        font-family: Arial, sans-serif;
+        color: #fff;
+    }
+    #game {
+        position: relative;
+        width: 400px;
+        height: 600px;
+        margin: 20px auto;
+        background: #222;
+        border: 3px solid #555;
+        overflow: hidden;
+    }
+    .road-line {
+        position: absolute;
+        width: 10px;
+        height: 80px;
+        background: #fff;
+        left: 195px;
+        opacity: 0.5;
+    }
+    #player {
+        position: absolute;
+        width: 60px;
+        height: 100px;
+        bottom: 20px;
+        left: 70px;
+        background: #4ade80;
+        border-radius: 10px;
+    }
+    .enemy {
+        position: absolute;
+        width: 60px;
+        height: 100px;
+        background: #ef4444;
+        border-radius: 10px;
+    }
+    #score {
+        text-align: center;
+        font-size: 22px;
+        margin-top: 10px;
+    }
+</style>
+</head>
+<body>
+
+<div id="score">sucked dicks: 0</div>
+<div id="game">
+    <div id="player"></div>
+</div>
+
 <script>
-/**
- * LOOP FRENZY: THE ULTIMATE NEON ENGINE
- * Features:
- * 1. Quad-tree inspired Collision Detection
- * 2. Vector-based Particle Physics
- * 3. Daily Seeded Procedural Generation
- * 4. Chromatic Aberration & Screen Shake Systems
- */
+/* ------------------------------
+   BASIC GAME VARIABLES
+------------------------------ */
+const game = document.getElementById("game");
+const player = document.getElementById("player");
+const scoreDisplay = document.getElementById("score");
 
-const EngineConfig = {
-    BASE_SPEED: 5,
-    FRENZY_MULTIPLIER: 2.5,
-    LANE_COUNT: 5,
-    PARTICLE_MAX: 150,
-    SHAKE_DECAY: 0.9
-};
+let lanes = [70, 170, 270]; // 3 lanes
+let currentLane = 0;
+let enemies = [];
+let score = 0;
+let gameOver = false;
 
-// --- CORE MATH & VECTORS ---
-class Vec2 {
-    constructor(x = 0, y = 0) { this.x = x; this.y = y; }
-    add(v) { this.x += v.x; this.y += v.y; return this; }
-    mul(s) { this.x *= s; this.y *= s; return this; }
+/* ------------------------------
+   ROAD LINES (MOVING)
+------------------------------ */
+let roadLines = [];
+for (let i = 0; i < 6; i++) {
+    let line = document.createElement("div");
+    line.classList.add("road-line");
+    line.style.top = (i * 120) + "px";
+    game.appendChild(line);
+    roadLines.push(line);
 }
 
-// --- PARTICLE SYSTEM ---
-class Particle {
-    constructor() { this.reset(); }
-    reset(x, y, color, speedScale = 1) {
-        this.pos = new Vec2(x, y);
-        this.vel = new Vec2((Util.rand() - 0.5) * 10 * speedScale, (Util.rand() - 0.5) * 10 * speedScale);
-        this.life = 1.0;
-        this.decay = 0.01 + Util.rand() * 0.03;
-        this.color = color;
-        this.active = true;
-    }
-    update() {
-        this.pos.add(this.vel);
-        this.life -= this.decay;
-        if (this.life <= 0) this.active = false;
-    }
-    draw(ctx) {
-        ctx.globalAlpha = this.life;
-        ctx.fillStyle = this.color;
-        ctx.fillRect(this.pos.x, this.pos.y, 3, 3);
-        ctx.globalAlpha = 1;
-    }
+/* ------------------------------
+   PLAYER MOVEMENT
+------------------------------ */
+function movePlayer(dir) {
+    if (gameOver) return;
+    currentLane += dir;
+    if (currentLane < 0) currentLane = 0;
+    if (currentLane > 2) currentLane = 2;
+    player.style.left = lanes[currentLane] + "px";
 }
 
-// --- GAME OBJECTS ---
-class Obstacle {
-    constructor(lane, type, speed) {
-        this.lane = lane;
-        this.type = type; // 'orb' or 'spike'
-        this.x = window.innerWidth + 100;
-        this.y = 120 + lane * ((window.innerHeight - 200) / EngineConfig.LANE_COUNT);
-        this.speed = speed;
-        this.radius = type === 'orb' ? 15 : 20;
-        this.angle = 0;
-    }
-    update(dt, globalSpeed) {
-        this.x -= this.speed * globalSpeed * dt * 60;
-        this.angle += 0.1;
-    }
-    draw(ctx) {
-        ctx.save();
-        ctx.translate(this.x, this.y);
-        ctx.rotate(this.angle);
-        if (this.type === 'orb') {
-            ctx.shadowBlur = 15; ctx.shadowColor = '#00d4ff';
-            ctx.strokeStyle = '#00d4ff';
-            ctx.strokeRect(-10, -10, 20, 20);
-        } else {
-            ctx.shadowBlur = 15; ctx.shadowColor = '#ff6b6b';
-            ctx.fillStyle = '#ff6b6b';
-            ctx.beginPath();
-            ctx.moveTo(0, -15); ctx.lineTo(15, 15); ctx.lineTo(-15, 15);
-            ctx.fill();
-        }
-        ctx.restore();
-    }
+document.addEventListener("keydown", e => {
+    if (e.key === "ArrowLeft" || e.key === "a") movePlayer(-1);
+    if (e.key === "ArrowRight" || e.key === "d") movePlayer(1);
+});
+
+/* ------------------------------
+   ENEMY SPAWNING
+------------------------------ */
+function spawnEnemy() {
+    if (gameOver) return;
+
+    let lane = Math.floor(Math.random() * 3);
+    let enemy = document.createElement("div");
+    enemy.classList.add("enemy");
+    enemy.style.left = lanes[lane] + "px";
+    enemy.style.top = "-120px";
+
+    game.appendChild(enemy);
+    enemies.push({ el: enemy, lane: lane, y: -120 });
 }
 
-// --- MAIN ENGINE ---
-const Game = {
-    state: {
-        score: 0, streak: 0, speed: 1, frenzy: false,
-        shake: 0, playerLane: 2, playerY: 0
-    },
-    pool: { particles: [], obstacles: [] },
-    
-    init() {
-        this.canvas = document.getElementById('game');
-        this.ctx = this.canvas.getContext('2d');
-        this.resize();
-        window.addEventListener('resize', () => this.resize());
-        
-        // Populate particle pool
-        for(let i=0; i < EngineConfig.PARTICLE_MAX; i++) this.pool.particles.push(new Particle());
-        
-        this.bindEvents();
-        this.reset();
-        this.loop();
-    },
+/* ------------------------------
+   COLLISION CHECK
+------------------------------ */
+function checkCollision(enemy) {
+    let px = lanes[currentLane];
+    let py = 480; // player Y
 
-    resize() {
-        this.W = this.canvas.width = window.innerWidth;
-        this.H = this.canvas.height = window.innerHeight;
-        this.state.playerY = this.getLaneY(this.state.playerLane);
-    },
+    let ex = lanes[enemy.lane];
+    let ey = enemy.y;
 
-    getLaneY(i) { return 120 + i * ((this.H - 200) / EngineConfig.LANE_COUNT); },
+    return Math.abs(px - ex) < 10 && Math.abs(py - ey) < 100;
+}
 
-    bindEvents() {
-        const triggerJump = () => {
-            if (!running) return;
-            this.state.playerLane = (this.state.playerLane + 1) % EngineConfig.LANE_COUNT;
-            this.spawnExplosion(100, this.state.playerY, '#00d4ff', 0.5);
-        };
-        
-        window.addEventListener('keydown', e => {
-            if (e.code === 'Space') triggerJump();
-            if (e.key === 'r') this.reset();
-        });
-        this.canvas.addEventListener('mousedown', triggerJump);
-        ui.play.onclick = () => { running = true; hud.start.classList.add('hidden'); };
-        ui.again.onclick = () => this.reset();
-    },
+/* ------------------------------
+   GAME LOOP
+------------------------------ */
+function update() {
+    if (gameOver) return;
 
-    reset() {
-        score = 0; streak = 0; speed = 1;
-        this.state.frenzy = false;
-        this.pool.obstacles = [];
-        running = false;
-        hud.gameover.classList.add('hidden');
-        hud.start.classList.remove('hidden');
-    },
+    // Move road lines
+    roadLines.forEach(line => {
+        let y = parseInt(line.style.top);
+        y += 8;
+        if (y > 600) y = -120;
+        line.style.top = y + "px";
+    });
 
-    spawnExplosion(x, y, color, scale) {
-        let count = 0;
-        for (let p of this.pool.particles) {
-            if (!p.active && count < 15) {
-                p.reset(x, y, color, scale);
-                count++;
-            }
+    // Move enemies
+    enemies.forEach(enemy => {
+        enemy.y += 6;
+        enemy.el.style.top = enemy.y + "px";
+
+        if (checkCollision(enemy)) {
+            endGame();
         }
-    },
+    });
 
-    update(dt) {
-        if (!running) return;
-
-        // Smooth Player Y
-        const targetY = this.getLaneY(this.state.playerLane);
-        this.state.playerY += (targetY - this.state.playerY) * 0.2;
-
-        // Difficulty Progression
-        speed = 1 + (score / 5000);
-        const currentMoveSpeed = EngineConfig.BASE_SPEED * (this.state.frenzy ? EngineConfig.FRENZY_MULTIPLIER : 1);
-
-        // Spawn Logic
-        if (Util.rand() < 0.03 * speed) {
-            this.pool.obstacles.push(new Obstacle(Math.floor(Util.rand() * 5), Util.rand() > 0.3 ? 'orb' : 'spike', currentMoveSpeed));
+    // Remove off-screen enemies
+    enemies = enemies.filter(e => {
+        if (e.y > 700) {
+            e.el.remove();
+            return false;
         }
+        return true;
+    });
 
-        // Collision & Movement
-        for (let i = this.pool.obstacles.length - 1; i >= 0; i--) {
-            const ob = this.pool.obstacles[i];
-            ob.update(dt, speed);
+    // Increase score
+    score++;
+    scoreDisplay.textContent = "Score: " + score;
 
-            // Distance Check
-            const dist = Math.hypot(ob.x - 100, ob.y - this.state.playerY);
-            if (dist < ob.radius + 20) {
-                if (ob.type === 'orb') {
-                    this.collectOrb(i);
-                } else if (!this.state.frenzy) {
-                    this.die();
-                }
-            }
+    requestAnimationFrame(update);
+}
 
-            if (ob.x < -100) this.pool.obstacles.splice(i, 1);
-        }
+/* ------------------------------
+   GAME OVER
+------------------------------ */
+function endGame() {
+    gameOver = true;
+    alert("CRASH! Final Score: " + score);
+    location.reload();
+}
 
-        this.pool.particles.forEach(p => { if (p.active) p.update(); });
-        
-        // Screen Shake
-        this.state.shake *= EngineConfig.SHAKE_DECAY;
-        
-        this.updateHUD();
-    },
-
-    collectOrb(index) {
-        const ob = this.pool.obstacles[index];
-        this.spawnExplosion(ob.x, ob.y, '#7cff7c', 1);
-        this.pool.obstacles.splice(index, 1);
-        score += 100 * speed;
-        streak++;
-        if (streak % 5 === 0) this.goFrenzy();
-    },
-
-    goFrenzy() {
-        this.state.frenzy = true;
-        this.state.shake = 20;
-        toast("FRENZY ACTIVATED!");
-        setTimeout(() => { this.state.frenzy = false; }, 5000);
-    },
-
-    die() {
-        running = false;
-        this.state.shake = 30;
-        this.spawnExplosion(100, this.state.playerY, '#ff6b6b', 2);
-        hud.finalScore.textContent = Math.floor(score);
-        hud.gameover.classList.remove('hidden');
-    },
-
-    updateHUD() {
-        hud.score.textContent = Math.floor(score);
-        hud.streak.textContent = streak;
-        hud.speed.textContent = speed.toFixed(1) + "x";
-    },
-
-    draw() {
-        this.ctx.clearRect(0, 0, this.W, this.H);
-        
-        this.ctx.save();
-        if (this.state.shake > 1) {
-            this.ctx.translate((Util.rand()-0.5)*this.state.shake, (Util.rand()-0.5)*this.state.shake);
-        }
-
-        // Draw Lanes
-        this.ctx.strokeStyle = '#1f2a38';
-        this.ctx.lineWidth = 2;
-        for(let i=0; i<5; i++) {
-            const y = this.getLaneY(i);
-            this.ctx.beginPath();
-            this.ctx.moveTo(0, y);
-            this.ctx.lineTo(this.W, y);
-            this.ctx.stroke();
-        }
-
-        // Draw Player
-        this.ctx.shadowBlur = 20;
-        this.ctx.shadowColor = this.state.frenzy ? '#ff2d6f' : '#00d4ff';
-        this.ctx.fillStyle = this.ctx.shadowColor;
-        this.ctx.beginPath();
-        this.ctx.arc(100, this.state.playerY, 15, 0, Math.PI * 2);
-        this.ctx.fill();
-
-        // Draw Entities
-        this.pool.obstacles.forEach(ob => ob.draw(this.ctx));
-        this.pool.particles.forEach(p => { if (p.active) p.draw(this.ctx); });
-
-        this.ctx.restore();
-    },
-
-    loop() {
-        const now = Util.now();
-        const dt = Math.min((now - last) / 1000, 0.1);
-        last = now;
-
-        this.update(dt);
-        this.draw();
-        requestAnimationFrame(() => this.loop());
-    }
-};
-
-// Initialize the Engine
-Game.init();
-
-})();
+/* ------------------------------
+   START GAME
+------------------------------ */
+setInterval(spawnEnemy, 900);
+update();
 </script>
+
+</body>
+</html>
