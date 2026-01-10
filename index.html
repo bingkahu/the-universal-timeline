@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Sanic the Porcupine – Platformer</title>
+  <title>Sanic the Porcupine – Retro Hard Edition</title>
   <style>
     * {
       box-sizing: border-box;
@@ -63,6 +63,11 @@
       color: #e5e7eb;
     }
 
+    #lives {
+      font-weight: 600;
+      color: #e5e7eb;
+    }
+
     #status {
       min-height: 18px;
       margin-top: 4px;
@@ -96,15 +101,16 @@
 <body>
   <div class="wrapper">
     <h1>Sanic the Porcupine</h1>
-    <p>Move with <strong>A / D</strong>, jump with <strong>Space</strong> or <strong>↑</strong>. Stomp enemies, avoid touching them from the side.</p>
+    <p>Move with <strong>A / D</strong>, jump with <strong>Space</strong> or <strong>↑</strong>. Stomp enemies. Avoid touching them from the side.</p>
 
     <canvas id="game" width="512" height="288"></canvas>
 
     <div id="hud">
       <div>Score: <span id="score">0</span></div>
+      <div>Lives: <span id="lives">3</span></div>
       <button id="restart" class="btn">Restart</button>
     </div>
-    <div id="status">Press any movement key or jump to start.</div>
+    <div id="status">Press A / D / Space / ↑ to start.</div>
   </div>
 
   <script>
@@ -115,6 +121,7 @@
       var ctx = canvas.getContext("2d");
 
       var scoreEl = document.getElementById("score");
+      var livesEl = document.getElementById("lives");
       var restartBtn = document.getElementById("restart");
       var statusEl = document.getElementById("status");
 
@@ -141,6 +148,7 @@
       var gameOver = false;
       var lastTime = 0;
       var score = 0;
+      var lives = 3;
 
       var cameraX = 0;
 
@@ -160,60 +168,99 @@
       var platforms = [];
       var enemies = [];
 
-function createLevel() {
-  loadLevel(currentLevel);
-}
+      // LEVEL DATA (Retro Hard)
+      var levels = [
+        {
+          length: 1200,
+          platforms: [
+            { x: 0, y: HEIGHT - groundHeight, w: 1200, h: groundHeight },
+            { x: 180, y: HEIGHT - 90, w: 100, h: 14 },
+            { x: 360, y: HEIGHT - 140, w: 120, h: 14 },
+            { x: 580, y: HEIGHT - 110, w: 100, h: 14 },
+            { x: 760, y: HEIGHT - 160, w: 140, h: 14 }
+          ],
+          enemies: [
+            { x: 220, y: HEIGHT - 90 - 20, vx: 60, platformIndex: 1 },
+            { x: 380, y: HEIGHT - 140 - 20, vx: -70, platformIndex: 2 },
+            { x: 620, y: HEIGHT - 110 - 20, vx: 60, platformIndex: 3 }
+          ]
+        },
 
+        {
+          length: 1500,
+          platforms: [
+            { x: 0, y: HEIGHT - groundHeight, w: 1500, h: groundHeight },
+            { x: 200, y: HEIGHT - 80, w: 120, h: 14 },
+            { x: 380, y: HEIGHT - 140, w: 140, h: 14 },
+            { x: 620, y: HEIGHT - 100, w: 100, h: 14 },
+            { x: 820, y: HEIGHT - 160, w: 140, h: 14 },
+            { x: 1100, y: HEIGHT - 130, w: 120, h: 14 }
+          ],
+          enemies: [
+            { x: 250, y: HEIGHT - 80 - 20, vx: 70, platformIndex: 1 },
+            { x: 400, y: HEIGHT - 140 - 20, vx: -80, platformIndex: 2 },
+            { x: 900, y: HEIGHT - 160 - 20, vx: 90, platformIndex: 4 },
+            { x: 1140, y: HEIGHT - 130 - 20, vx: -70, platformIndex: 5 }
+          ]
+        },
 
-        var groundY = HEIGHT - groundHeight;
+        {
+          length: 1800,
+          platforms: [
+            { x: 0, y: HEIGHT - groundHeight, w: 1800, h: groundHeight },
+            { x: 180, y: HEIGHT - 90, w: 100, h: 14 },
+            { x: 360, y: HEIGHT - 140, w: 120, h: 14 },
+            { x: 580, y: HEIGHT - 110, w: 100, h: 14 },
+            { x: 760, y: HEIGHT - 160, w: 140, h: 14 },
+            { x: 1000, y: HEIGHT - 130, w: 120, h: 14 },
+            { x: 1300, y: HEIGHT - 150, w: 140, h: 14 }
+          ],
+          enemies: [
+            { x: 220, y: HEIGHT - 90 - 20, vx: 80, platformIndex: 1 },
+            { x: 380, y: HEIGHT - 140 - 20, vx: -90, platformIndex: 2 },
+            { x: 620, y: HEIGHT - 110 - 20, vx: 80, platformIndex: 3 },
+            { x: 780, y: HEIGHT - 160 - 20, vx: -100, platformIndex: 4 },
+            { x: 1040, y: HEIGHT - 130 - 20, vx: 90, platformIndex: 5 },
+            { x: 1340, y: HEIGHT - 150 - 20, vx: -110, platformIndex: 6 }
+          ]
+        }
+      ];
 
-        platforms.push({
-          x: 0,
-          y: groundY,
-          w: 800,
-          h: groundHeight
+      var currentLevel = 0;
+
+      function loadLevel(index) {
+        var lvl = levels[index];
+
+        platforms = [];
+        enemies = [];
+
+        lvl.platforms.forEach(p => {
+          platforms.push({
+            x: p.x,
+            y: p.y,
+            w: p.w,
+            h: p.h
+          });
         });
 
-        platforms.push({ x: 140, y: groundY - 60, w: 90, h: 14 });
-        platforms.push({ x: 280, y: groundY - 110, w: 110, h: 14 });
-        platforms.push({ x: 460, y: groundY - 80, w: 90, h: 14 });
-
-        platforms.push({ x: 620, y: groundY - 50, w: 80, h: 14 });
-        platforms.push({ x: 760, y: groundY - 90, w: 110, h: 14 });
-
-        enemies.push({
-          x: 210,
-          y: groundY - 20,
-          w: 20,
-          h: 20,
-          vx: -50,
-          alive: true,
-          platformIndex: 0
-        });
-
-        enemies.push({
-          x: 310,
-          y: groundY - 110 - 20,
-          w: 20,
-          h: 20,
-          vx: 40,
-          alive: true,
-          platformIndex: 2
-        });
-
-        enemies.push({
-          x: 780,
-          y: groundY - 90 - 20,
-          w: 20,
-          h: 20,
-          vx: -45,
-          alive: true,
-          platformIndex: 4
+        lvl.enemies.forEach(e => {
+          enemies.push({
+            x: e.x,
+            y: e.y,
+            w: 20,
+            h: 20,
+            vx: e.vx,
+            alive: true,
+            platformIndex: e.platformIndex
+          });
         });
       }
 
+      function createLevel() {
+        loadLevel(currentLevel);
+      }
+
       function resetGame() {
-      cameraX = 0;
         createLevel();
 
         player.x = 40;
@@ -230,7 +277,9 @@ function createLevel() {
         gameOver = false;
         lastTime = 0;
         score = 0;
+
         scoreEl.textContent = "0";
+        livesEl.textContent = lives.toString();
         statusEl.textContent = "Press A / D / Space / ↑ to start.";
       }
 
@@ -256,9 +305,6 @@ function createLevel() {
 
       function applyVerticalCollision(entity, plat) {
         if (!rectsIntersect(entity, plat)) return;
-
-        var prevBottom = entity.y + entity.h - entity.vy * (1 / 60);
-        var prevTop = entity.y - entity.vy * (1 / 60);
 
         if (entity.vy > 0) {
           entity.y = plat.y - entity.h;
@@ -313,7 +359,7 @@ function createLevel() {
           player.frameTimer = 0;
         }
 
-        var levelEnd = 800 - 150;
+        var levelEnd = levels[currentLevel].length - 150;
         cameraX = player.x - 120;
         if (cameraX < 0) cameraX = 0;
         if (cameraX > levelEnd) cameraX = levelEnd;
@@ -347,7 +393,7 @@ function createLevel() {
               score += 100;
               scoreEl.textContent = score.toString();
             } else {
-              handleGameOver();
+              loseLife();
             }
           }
         });
@@ -356,8 +402,51 @@ function createLevel() {
         scoreEl.textContent = Math.floor(score).toString();
 
         if (player.y > HEIGHT + 50) {
-          handleGameOver();
+          loseLife();
         }
+
+        if (player.x > levelEnd) {
+          nextLevel();
+        }
+      }
+
+      function loseLife() {
+        lives--;
+        livesEl.textContent = lives.toString();
+
+        if (lives <= 0) {
+          handleGameOver();
+          return;
+        }
+
+        statusEl.textContent = "Ouch! You lost a life. Restarting level...";
+        running = false;
+
+        setTimeout(() => {
+          resetGame();
+          running = true;
+          statusEl.textContent = "";
+        }, 1200);
+      }
+
+      function nextLevel() {
+        currentLevel++;
+
+        if (currentLevel >= levels.length) {
+          statusEl.textContent = "You beat all levels! Sanic approves.";
+          running = false;
+          gameOver = true;
+          return;
+        }
+
+        statusEl.textContent = "Level Complete! Loading next...";
+        running = false;
+
+        setTimeout(() => {
+          resetGame();
+          running = true;
+          statusEl.textContent = "";
+        }, 1200);
       }
 
       function handleGameOver() {
@@ -408,257 +497,3 @@ function createLevel() {
             ctx.fillRect(sx, sy + p.h - 3, p.w, 3);
           }
         });
-      }
-
-      function drawSanic() {
-        var x = Math.round(player.x - cameraX);
-        var y = Math.round(player.y);
-        var w = player.w;
-        var h = player.h;
-
-        ctx.save();
-        ctx.translate(x + w / 2, y + h / 2);
-        ctx.scale(player.facing, 1);
-        ctx.translate(-w / 2, -h / 2);
-
-        ctx.fillStyle = "#1d4ed8";
-        ctx.fillRect(0, 4, w, 16);
-
-        ctx.fillStyle = "#2563eb";
-        ctx.fillRect(10, 0, 10, 10);
-
-        ctx.fillStyle = "#fee2e2";
-        ctx.fillRect(12, 2, 6, 6);
-
-        ctx.fillStyle = "#000000";
-        ctx.fillRect(16, 3, 2, 2);
-
-        ctx.fillStyle = "#1d4ed8";
-        ctx.fillRect(4, 2, 6, 3);
-        ctx.fillRect(2, 6, 6, 3);
-
-        ctx.fillStyle = "#f97316";
-        if (player.onGround && Math.abs(player.vx) > 10) {
-          if (player.frame === 0) {
-            ctx.fillRect(4, 20, 6, 4);
-            ctx.fillRect(14, 20, 6, 4);
-          } else {
-            ctx.fillRect(6, 20, 6, 4);
-            ctx.fillRect(12, 20, 6, 4);
-          }
-        } else {
-          ctx.fillRect(6, 20, 12, 4);
-        }
-
-        ctx.fillStyle = "#fbbf24";
-        ctx.fillRect(2, 10, 4, 4);
-        ctx.fillRect(18, 10, 4, 4);
-
-        ctx.restore();
-      }
-
-      function drawEnemies() {
-        enemies.forEach(function (e) {
-          if (!e.alive) return;
-          var x = Math.round(e.x - cameraX);
-          var y = Math.round(e.y);
-          var w = e.w;
-          var h = e.h;
-
-          if (x + w < -10 || x > WIDTH + 10) return;
-
-          ctx.fillStyle = "#dc2626";
-          ctx.fillRect(x, y + 4, w, h - 4);
-
-          ctx.fillStyle = "#fecaca";
-          ctx.fillRect(x + 4, y + 2, w - 8, 6);
-
-          ctx.fillStyle = "#000000";
-          ctx.fillRect(x + 6, y + 4, 2, 2);
-          ctx.fillRect(x + w - 8, y + 4, 2, 2);
-
-          ctx.fillStyle = "#4b5563";
-          ctx.fillRect(x, y + h - 4, w, 4);
-        });
-      }
-
-      function draw() {
-        drawBackground();
-        drawPlatforms();
-        drawEnemies();
-        drawSanic();
-      }
-
-      function loop(timestamp) {
-        if (!lastTime) lastTime = timestamp;
-        var dt = (timestamp - lastTime) / 1000;
-        if (dt > 0.03) dt = 0.03;
-        lastTime = timestamp;
-
-        if (!gameOver && running) {
-          update(dt);
-        }
-
-        draw();
-        requestAnimationFrame(loop);
-      }
-
-      function handleKeyDown(e) {
-        if (e.code === "KeyA" || e.key === "a" || e.key === "A") {
-          keys.left = true;
-        }
-        if (e.code === "KeyD" || e.key === "d" || e.key === "D") {
-          keys.right = true;
-        }
-        if (
-          e.code === "Space" ||
-          e.code === "ArrowUp" ||
-          e.key === " " ||
-          e.key === "ArrowUp"
-        ) {
-          keys.jump = true;
-        }
-
-        if (!running && !gameOver) {
-          running = true;
-          statusEl.textContent = "";
-        } else if (gameOver) {
-          resetGame();
-        }
-      }
-
-      function handleKeyUp(e) {
-        if (e.code === "KeyA" || e.key === "a" || e.key === "A") {
-          keys.left = false;
-        }
-        if (e.code === "KeyD" || e.key === "d" || e.key === "D") {
-          keys.right = false;
-        }
-        if (
-          e.code === "Space" ||
-          e.code === "ArrowUp" ||
-          e.key === " " ||
-          e.key === "ArrowUp"
-        ) {
-          keys.jump = false;
-        }
-      }
-
-      window.addEventListener("keydown", handleKeyDown);
-      window.addEventListener("keyup", handleKeyUp);
-
-      restartBtn.addEventListener("click", function () {
-        resetGame();
-      });
-// LEVEL DATA
-var levels = [
-  {
-    length: 900,
-    platforms: [
-      { x: 0, y: HEIGHT - groundHeight, w: 900, h: groundHeight },
-      { x: 140, y: HEIGHT - 100, w: 90, h: 14 },
-      { x: 280, y: HEIGHT - 150, w: 110, h: 14 },
-      { x: 460, y: HEIGHT - 120, w: 90, h: 14 }
-    ],
-    enemies: [
-      { x: 210, y: HEIGHT - groundHeight - 20, vx: -50, platformIndex: 0 },
-      { x: 310, y: HEIGHT - 150 - 20, vx: 40, platformIndex: 2 }
-    ]
-  },
-
-  {
-    length: 1200,
-    platforms: [
-      { x: 0, y: HEIGHT - groundHeight, w: 1200, h: groundHeight },
-      { x: 200, y: HEIGHT - 80, w: 120, h: 14 },
-      { x: 380, y: HEIGHT - 140, w: 140, h: 14 },
-      { x: 620, y: HEIGHT - 100, w: 100, h: 14 },
-      { x: 820, y: HEIGHT - 160, w: 140, h: 14 }
-    ],
-    enemies: [
-      { x: 250, y: HEIGHT - 80 - 20, vx: 40, platformIndex: 1 },
-      { x: 400, y: HEIGHT - 140 - 20, vx: -50, platformIndex: 2 },
-      { x: 900, y: HEIGHT - 160 - 20, vx: 60, platformIndex: 4 }
-    ]
-  },
-
-  {
-    length: 1500,
-    platforms: [
-      { x: 0, y: HEIGHT - groundHeight, w: 1500, h: groundHeight },
-      { x: 180, y: HEIGHT - 90, w: 100, h: 14 },
-      { x: 360, y: HEIGHT - 140, w: 120, h: 14 },
-      { x: 580, y: HEIGHT - 110, w: 100, h: 14 },
-      { x: 760, y: HEIGHT - 160, w: 140, h: 14 },
-      { x: 1000, y: HEIGHT - 130, w: 120, h: 14 }
-    ],
-    enemies: [
-      { x: 220, y: HEIGHT - 90 - 20, vx: 40, platformIndex: 1 },
-      { x: 380, y: HEIGHT - 140 - 20, vx: -50, platformIndex: 2 },
-      { x: 620, y: HEIGHT - 110 - 20, vx: 40, platformIndex: 3 },
-      { x: 780, y: HEIGHT - 160 - 20, vx: -60, platformIndex: 4 },
-      { x: 1040, y: HEIGHT - 130 - 20, vx: 50, platformIndex: 5 }
-    ]
-  }
-];
-
-var currentLevel = 0;
-
-// LOAD LEVEL
-function loadLevel(index) {
-  var lvl = levels[index];
-
-  platforms = [];
-  enemies = [];
-
-  lvl.platforms.forEach(p => {
-    platforms.push({
-      x: p.x,
-      y: p.y,
-      w: p.w,
-      h: p.h
-    });
-  });
-
-  lvl.enemies.forEach(e => {
-    enemies.push({
-      x: e.x,
-      y: e.y,
-      w: 20,
-      h: 20,
-      vx: e.vx,
-      alive: true,
-      platformIndex: e.platformIndex
-    });
-  });
-}
-    // LEVEL COMPLETE CHECK
-var levelEnd = levels[currentLevel].length - 150;
-
-if (player.x > levelEnd) {
-  currentLevel++;
-
-  if (currentLevel >= levels.length) {
-    statusEl.textContent = "You beat all levels! Sanic approves.";
-    running = false;
-    gameOver = true;
-    return;
-  }
-
-  statusEl.textContent = "Level Complete! Loading next...";
-  running = false;
-
-  setTimeout(() => {
-    resetGame();
-    running = true;
-    statusEl.textContent = "";
-  }, 1200);
-}
-
-
-      resetGame();
-      requestAnimationFrame(loop);
-    })();
-  </script>
-</body>
-</html>
