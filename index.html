@@ -2,307 +2,451 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Solid 5000 Line HTML Template</title>
+  <title>Sanic the Porcupine</title>
   <style>
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #050816;
-      color: #e5e7eb;
+    * {
+      box-sizing: border-box;
       margin: 0;
       padding: 0;
-      line-height: 1.5;
     }
 
-    main {
-      max-width: 960px;
-      margin: 0 auto;
-      padding: 24px 16px 48px 16px;
+    body {
+      background: #020617;
+      color: #e5e7eb;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+
+    .wrapper {
+      text-align: center;
     }
 
     h1 {
-      font-size: 24px;
-      margin: 0 0 12px 0;
+      margin-bottom: 6px;
+      font-size: 22px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
     }
 
     p {
-      margin: 4px 0 0 0;
+      margin-bottom: 8px;
+      font-size: 13px;
       color: #9ca3af;
     }
 
-    .line {
-      padding: 2px 0;
-      font-family: "Fira Code", "Consolas", "SF Mono", Menlo, monospace;
-      font-size: 12px;
-      white-space: pre;
+    #game {
+      border: 4px solid #111827;
+      border-radius: 6px;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      background: linear-gradient(#1d4ed8 0, #1d4ed8 60%, #16a34a 60%, #14532d 100%);
+      box-shadow: 0 0 24px rgba(15, 23, 42, 0.9);
     }
 
-    .line:nth-child(2n) {
-      background: rgba(148, 163, 184, 0.06);
+    #hud {
+      margin-top: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      color: #9ca3af;
     }
 
-    .line-number {
-      color: #6b7280;
-      display: inline-block;
-      width: 60px;
-      text-align: right;
-      padding-right: 16px;
-      user-select: none;
-    }
-
-    .line-content {
+    #score {
+      font-weight: 600;
       color: #e5e7eb;
+    }
+
+    #status {
+      min-height: 18px;
+      margin-top: 4px;
+      font-size: 12px;
+      color: #fbbf24;
+    }
+
+    .btn {
+      border: none;
+      background: #4f46e5;
+      color: #e5e7eb;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(79, 70, 229, 0.7);
+      transition: background 0.15s ease, transform 0.1s ease;
+    }
+
+    .btn:hover {
+      background: #6366f1;
+      transform: translateY(-1px);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+      box-shadow: 0 0 4px rgba(79, 70, 229, 0.7);
     }
   </style>
 </head>
 <body>
-  <main>
-    <h1>index.html – solid lines</h1>
-    <p>This is a static HTML template you can extend to 5000 lines.</p>
+  <div class="wrapper">
+    <h1>Sanic the Porcupine</h1>
+    <p>Press any key to start. Jump with <strong>Space</strong> or <strong>↑</strong>. Don’t bonk into spikes.</p>
 
-    <!--
-      INSTRUCTIONS:
-      1. Find the repeated block of <div class="line"> elements below.
-      2. Duplicate them until your file reaches 5000 lines.
-      3. Optionally adjust content inside .line-content for your needs.
-    -->
+    <canvas id="game" width="480" height="270"></canvas>
 
-    <!-- BEGIN GENERATED LINES -->
+    <div id="hud">
+      <div>Score: <span id="score">0</span></div>
+      <button id="restart" class="btn">Restart</button>
+    </div>
+    <div id="status">Waiting for you to go fast...</div>
+  </div>
 
-    <div class="line">
-      <span class="line-number">0001</span>
-      <span class="line-content">&lt;!-- index.html line 0001: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0002</span>
-      <span class="line-content">&lt;!-- index.html line 0002: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0003</span>
-      <span class="line-content">&lt;!-- index.html line 0003: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0004</span>
-      <span class="line-content">&lt;!-- index.html line 0004: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0005</span>
-      <span class="line-content">&lt;!-- index.html line 0005: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0006</span>
-      <span class="line-content">&lt;!-- index.html line 0006: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0007</span>
-      <span class="line-content">&lt;!-- index.html line 0007: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0008</span>
-      <span class="line-content">&lt;!-- index.html line 0008: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0009</span>
-      <span class="line-content">&lt;!-- index.html line 0009: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0010</span>
-      <span class="line-content">&lt;!-- index.html line 0010: static content placeholder --&gt;</span>
-    </div>
+  <script>
+    (function () {
+      "use strict";
 
-    <div class="line">
-      <span class="line-number">0011</span>
-      <span class="line-content">&lt;!-- index.html line 0011: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0012</span>
-      <span class="line-content">&lt;!-- index.html line 0012: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0013</span>
-      <span class="line-content">&lt;!-- index.html line 0013: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0014</span>
-      <span class="line-content">&lt;!-- index.html line 0014: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0015</span>
-      <span class="line-content">&lt;!-- index.html line 0015: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0016</span>
-      <span class="line-content">&lt;!-- index.html line 0016: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0017</span>
-      <span class="line-content">&lt;!-- index.html line 0017: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0018</span>
-      <span class="line-content">&lt;!-- index.html line 0018: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0019</span>
-      <span class="line-content">&lt;!-- index.html line 0019: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0020</span>
-      <span class="line-content">&lt;!-- index.html line 0020: static content placeholder --&gt;</span>
-    </div>
+      var canvas = document.getElementById("game");
+      var ctx = canvas.getContext("2d");
 
-    <div class="line">
-      <span class="line-number">0021</span>
-      <span class="line-content">&lt;!-- index.html line 0021: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0022</span>
-      <span class="line-content">&lt;!-- index.html line 0022: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0023</span>
-      <span class="line-content">&lt;!-- index.html line 0023: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0024</span>
-      <span class="line-content">&lt;!-- index.html line 0024: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0025</span>
-      <span class="line-content">&lt;!-- index.html line 0025: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0026</span>
-      <span class="line-content">&lt;!-- index.html line 0026: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0027</span>
-      <span class="line-content">&lt;!-- index.html line 0027: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0028</span>
-      <span class="line-content">&lt;!-- index.html line 0028: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0029</span>
-      <span class="line-content">&lt;!-- index.html line 0029: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0030</span>
-      <span class="line-content">&lt;!-- index.html line 0030: static content placeholder --&gt;</span>
-    </div>
+      var scoreEl = document.getElementById("score");
+      var restartBtn = document.getElementById("restart");
+      var statusEl = document.getElementById("status");
 
-    <!-- ... lines continue in the same pattern ... -->
+      // Game world
+      var WIDTH = canvas.width;
+      var HEIGHT = canvas.height;
 
-    <!-- Below is a jump ahead to show the pattern; in your file you would keep all numbers in between. -->
+      // “16-bit” style scaling helpers
+      function pix(n) {
+        // Basic block size – dial this for chunkiness
+        return Math.round(n);
+      }
 
-    <div class="line">
-      <span class="line-number">0101</span>
-      <span class="line-content">&lt;!-- index.html line 0101: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0102</span>
-      <span class="line-content">&lt;!-- index.html line 0102: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0103</span>
-      <span class="line-content">&lt;!-- index.html line 0103: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0104</span>
-      <span class="line-content">&lt;!-- index.html line 0104: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0105</span>
-      <span class="line-content">&lt;!-- index.html line 0105: static content placeholder --&gt;</span>
-    </div>
+      // Ground
+      var groundY = HEIGHT - pix(40);
 
-    <!-- You can stop reading here; below is just more of the same so you can easily select/duplicate. -->
+      // Player (Sanic)
+      var player = {
+        x: pix(70),
+        y: groundY - pix(24),
+        w: pix(24),
+        h: pix(24),
+        vy: 0,
+        onGround: true,
+        frame: 0,
+        frameTimer: 0
+      };
 
-    <div class="line">
-      <span class="line-number">0201</span>
-      <span class="line-content">&lt;!-- index.html line 0201: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0202</span>
-      <span class="line-content">&lt;!-- index.html line 0202: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0203</span>
-      <span class="line-content">&lt;!-- index.html line 0203: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0204</span>
-      <span class="line-content">&lt;!-- index.html line 0204: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0205</span>
-      <span class="line-content">&lt;!-- index.html line 0205: static content placeholder --&gt;</span>
-    </div>
+      // Obstacles (spikes)
+      var spikes = [];
+      var lastSpawnX = WIDTH;
+      var spawnGapMin = 140;
+      var spawnGapMax = 260;
 
-    <div class="line">
-      <span class="line-number">0301</span>
-      <span class="line-content">&lt;!-- index.html line 0301: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0302</span>
-      <span class="line-content">&lt;!-- index.html line 0302: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0303</span>
-      <span class="line-content">&lt;!-- index.html line 0303: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0304</span>
-      <span class="line-content">&lt;!-- index.html line 0304: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0305</span>
-      <span class="line-content">&lt;!-- index.html line 0305: static content placeholder --&gt;</span>
-    </div>
+      // Camera / scroll
+      var speed = 150; // world scroll speed
+      var speedIncrease = 4; // per second
+      var maxSpeed = 420;
 
-    <div class="line">
-      <span class="line-number">0401</span>
-      <span class="line-content">&lt;!-- index.html line 0401: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0402</span>
-      <span class="line-content">&lt;!-- index.html line 0402: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0403</span>
-      <span class="line-content">&lt;!-- index.html line 0403: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0404</span>
-      <span class="line-content">&lt;!-- index.html line 0404: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0405</span>
-      <span class="line-content">&lt;!-- index.html line 0405: static content placeholder --&gt;</span>
-    </div>
+      // Game state
+      var running = false;
+      var gameOver = false;
+      var lastTime = 0;
+      var score = 0;
 
-    <div class="line">
-      <span class="line-number">0501</span>
-      <span class="line-content">&lt;!-- index.html line 0501: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0502</span>
-      <span class="line-content">&lt;!-- index.html line 0502: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0503</span>
-      <span class="line-content">&lt;!-- index.html line 0503: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0504</span>
-      <span class="line-content">&lt;!-- index.html line 0504: static content placeholder --&gt;</span>
-    </div>
-    <div class="line">
-      <span class="line-number">0505</span>
-      <span class="line-content">&lt;!-- index.html line 0505: static content placeholder --&gt;</span>
-    </div>
+      // Input
+      var jumpQueued = false;
 
-    <!-- END GENERATED LINES -->
-  </main>
+      function resetGame() {
+        player.y = groundY - player.h;
+        player.vy = 0;
+        player.onGround = true;
+        player.frame = 0;
+        player.frameTimer = 0;
+
+        spikes = [];
+        lastSpawnX = WIDTH;
+        speed = 150;
+        score = 0;
+        scoreEl.textContent = "0";
+        running = false;
+        gameOver = false;
+        lastTime = 0;
+        jumpQueued = false;
+        statusEl.textContent = "Press any key to start. Jump with Space or ↑.";
+      }
+
+      function spawnSpike(x) {
+        var size = pix(18);
+        var spike = {
+          x: x,
+          y: groundY - size + 4,
+          w: size,
+          h: size,
+        };
+        spikes.push(spike);
+      }
+
+      function ensureSpikes() {
+        while (lastSpawnX < WIDTH + 300) {
+          var gap = spawnGapMin + Math.random() * (spawnGapMax - spawnGapMin);
+          lastSpawnX += gap;
+          spawnSpike(lastSpawnX);
+        }
+      }
+
+      function jump() {
+        if (player.onGround && !gameOver) {
+          player.vy = -320;
+          player.onGround = false;
+        }
+      }
+
+      function update(dt) {
+        if (!running) return;
+
+        // Increase difficulty over time
+        speed += speedIncrease * dt;
+        if (speed > maxSpeed) speed = maxSpeed;
+
+        // Apply jump if queued
+        if (jumpQueued) {
+          jump();
+          jumpQueued = false;
+        }
+
+        // Gravity
+        player.vy += 900 * dt;
+        player.y += player.vy * dt;
+
+        // Ground collision
+        if (player.y + player.h >= groundY) {
+          player.y = groundY - player.h;
+          player.vy = 0;
+          player.onGround = true;
+        }
+
+        // Animate Sanic (simple 2-frame run)
+        if (player.onGround) {
+          player.frameTimer += dt;
+          var frameDuration = 0.12;
+          if (player.frameTimer >= frameDuration) {
+            player.frameTimer = 0;
+            player.frame = (player.frame + 1) % 2;
+          }
+        } else {
+          player.frame = 0;
+        }
+
+        // Move spikes left
+        for (var i = spikes.length - 1; i >= 0; i--) {
+          var s = spikes[i];
+          s.x -= speed * dt;
+
+          // Remove off-screen spikes
+          if (s.x + s.w < -40) {
+            spikes.splice(i, 1);
+          }
+        }
+
+        // Spawn new spikes when needed
+        if (spikes.length === 0) {
+          lastSpawnX = WIDTH;
+        } else {
+          lastSpawnX = spikes[spikes.length - 1].x;
+        }
+        ensureSpikes();
+
+        // Collision detection
+        for (var j = 0; j < spikes.length; j++) {
+          var sp = spikes[j];
+          if (
+            player.x < sp.x + sp.w &&
+            player.x + player.w > sp.x &&
+            player.y < sp.y + sp.h &&
+            player.y + player.h > sp.y
+          ) {
+            handleGameOver();
+            return;
+          }
+        }
+
+        // Score (distance)
+        score += speed * dt * 0.05;
+        scoreEl.textContent = Math.floor(score);
+      }
+
+      function handleGameOver() {
+        gameOver = true;
+        running = false;
+        statusEl.textContent = "Bonked! Score: " + Math.floor(score) + ". Press Restart or any key to go again.";
+      }
+
+      // Drawing helpers (keep it chunky/retro-ish)
+      function drawBackground() {
+        // Sky (already canvas background)
+        // Far hills
+        ctx.fillStyle = "#1e3a8a";
+        ctx.fillRect(0, groundY - pix(70), WIDTH, pix(40));
+
+        ctx.fillStyle = "#1d4ed8";
+        ctx.fillRect(0, groundY - pix(50), WIDTH, pix(30));
+
+        // Ground main
+        ctx.fillStyle = "#16a34a";
+        ctx.fillRect(0, groundY, WIDTH, HEIGHT - groundY);
+
+        // Ground darker stripe
+        ctx.fillStyle = "#15803d";
+        ctx.fillRect(0, groundY + pix(10), WIDTH, HEIGHT - groundY - pix(10));
+
+        // Little grass tufts
+        ctx.fillStyle = "#22c55e";
+        for (var x = 0; x < WIDTH; x += 32) {
+          ctx.fillRect(x + 4, groundY - 3, 3, 3);
+          ctx.fillRect(x + 10, groundY - 4, 3, 4);
+          ctx.fillRect(x + 18, groundY - 3, 3, 3);
+        }
+      }
+
+      function drawSanic() {
+        var x = Math.round(player.x);
+        var y = Math.round(player.y);
+        var w = player.w;
+        var h = player.h;
+
+        // Body (blue square)
+        ctx.fillStyle = "#1d4ed8";
+        ctx.fillRect(x, y + pix(4), w, pix(16));
+
+        // Head
+        ctx.fillStyle = "#2563eb";
+        ctx.fillRect(x + pix(12), y, pix(10), pix(10));
+
+        // Face
+        ctx.fillStyle = "#fee2e2";
+        ctx.fillRect(x + pix(14), y + pix(2), pix(6), pix(6));
+
+        // Eye
+        ctx.fillStyle = "#000000";
+        ctx.fillRect(x + pix(18), y + pix(3), pix(2), pix(2));
+
+        // Spikes (two blue triangles-ish)
+        ctx.fillStyle = "#1d4ed8";
+        ctx.fillRect(x + pix(4), y + pix(2), pix(6), pix(3));
+        ctx.fillRect(x + pix(2), y + pix(6), pix(6), pix(3));
+
+        // Legs / running animation
+        ctx.fillStyle = "#f97316";
+        if (player.onGround) {
+          if (player.frame === 0) {
+            ctx.fillRect(x + pix(4), y + pix(20), pix(6), pix(4));
+            ctx.fillRect(x + pix(14), y + pix(20), pix(6), pix(4));
+          } else {
+            ctx.fillRect(x + pix(6), y + pix(20), pix(6), pix(4));
+            ctx.fillRect(x + pix(12), y + pix(20), pix(6), pix(4));
+          }
+        } else {
+          ctx.fillRect(x + pix(6), y + pix(20), pix(12), pix(4));
+        }
+
+        // Arms
+        ctx.fillStyle = "#fbbf24";
+        ctx.fillRect(x + pix(2), y + pix(10), pix(4), pix(4));
+        ctx.fillRect(x + pix(18), y + pix(10), pix(4), pix(4));
+      }
+
+      function drawSpikes() {
+        ctx.fillStyle = "#e5e7eb";
+        spikes.forEach(function (s) {
+          var sx = Math.round(s.x);
+          var sy = Math.round(s.y);
+          var size = s.w;
+
+          // Simple triangle-ish spike
+          ctx.fillRect(sx + size * 0.4, sy, pix(size * 0.2), pix(size));
+          ctx.fillRect(sx + size * 0.2, sy + size * 0.3, pix(size * 0.2), pix(size * 0.7));
+          ctx.fillRect(sx + size * 0.6, sy + size * 0.3, pix(size * 0.2), pix(size * 0.7));
+
+          ctx.fillStyle = "#9ca3af";
+          ctx.fillRect(sx, sy + size - 3, size, 3);
+          ctx.fillStyle = "#e5e7eb";
+        });
+      }
+
+      function draw() {
+        // Clear
+        ctx.clearRect(0, 0, WIDTH, HEIGHT);
+
+        // Background & world
+        drawBackground();
+
+        // Spikes and player
+        drawSpikes();
+        drawSanic();
+
+        // Optional: horizon “speed lines”
+        ctx.fillStyle = "rgba(239, 246, 255, 0.18)";
+        for (var i = 0; i < 4; i++) {
+          var y = 40 + i * 16;
+          ctx.fillRect((Date.now() / 4 + i * 60) % WIDTH, y, 40, 2);
+        }
+      }
+
+      function loop(timestamp) {
+        if (!lastTime) lastTime = timestamp;
+        var dt = (timestamp - lastTime) / 1000;
+        lastTime = timestamp;
+
+        if (!gameOver && running) {
+          update(dt);
+        }
+
+        draw();
+        requestAnimationFrame(loop);
+      }
+
+      // Input handling
+      function handleKeyDown(e) {
+        if (
+          e.code === "Space" ||
+          e.code === "ArrowUp" ||
+          e.key === " " ||
+          e.key === "ArrowUp"
+        ) {
+          if (!running && !gameOver) {
+            running = true;
+            statusEl.textContent = "";
+          }
+          jumpQueued = true;
+        } else {
+          // Any other key can start the game
+          if (!running && !gameOver) {
+            running = true;
+            statusEl.textContent = "";
+          }
+        }
+
+        if (gameOver) {
+          // Press any key to restart
+          resetGame();
+        }
+      }
+
+      window.addEventListener("keydown", handleKeyDown);
+
+      restartBtn.addEventListener("click", function () {
+        resetGame();
+      });
+
+      // Init
+      resetGame();
+      ensureSpikes();
+      requestAnimationFrame(loop);
+    })();
+  </script>
 </body>
 </html>
