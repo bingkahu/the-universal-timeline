@@ -1,280 +1,192 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEON REBEL // SYSTEM_v1.0</title>
-    <style>
-        :root {
-            --neon-blue: #00f2ff;
-            --neon-pink: #ff0055;
-            --bg-dark: #050508;
-            --panel: rgba(20, 20, 25, 0.95);
-        }
-
-        body, html {
-            margin: 0; padding: 0;
-            background: var(--bg-dark);
-            color: white;
-            font-family: 'Courier New', monospace;
-            overflow: hidden;
-            height: 100%;
-        }
-
-        canvas { display: block; cursor: crosshair; }
-
-        /* --- CRT & UI OVERLAYS --- */
-        .crt::before {
-            content: " "; display: block; position: absolute; inset: 0;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), 
-                        linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
-            z-index: 10; background-size: 100% 3px, 3px 100%; pointer-events: none;
-        }
-
-        #hud {
-            position: absolute; top: 20px; left: 20px;
-            pointer-events: none; text-transform: uppercase; z-index: 5;
-        }
-
-        .stat-box {
-            background: var(--panel); border-left: 4px solid var(--neon-blue);
-            padding: 10px 20px; margin-bottom: 10px;
-            box-shadow: 0 0 15px rgba(0, 242, 255, 0.2);
-        }
-
-        #boot-screen {
-            position: absolute; inset: 0; background: black;
-            display: flex; flex-direction: column; justify-content: center;
-            align-items: center; z-index: 9999;
-        }
-
-        .terminal-text { color: var(--neon-blue); margin: 5px; font-size: 14px; }
-
-        .btn {
-            background: none; border: 2px solid var(--neon-pink);
-            color: var(--neon-pink); padding: 15px 30px;
-            cursor: pointer; font-weight: bold; transition: 0.3s;
-            margin-top: 20px;
-        }
-
-        .btn:hover { background: var(--neon-pink); color: white; box-shadow: 0 0 20px var(--neon-pink); }
-
-        #legal-notice {
-            position: absolute; bottom: 10px; width: 100%;
-            text-align: center; font-size: 10px; color: #444; pointer-events: none;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>AI Chatbot</title>
+  <style>
+    body {
+      background: #0f172a;
+      color: #e2e8f0;
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      padding-top: 40px;
+    }
+    #chatbox {
+      width: 450px;
+      background: #1e293b;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.4);
+    }
+    #messages {
+      height: 320px;
+      overflow-y: auto;
+      border: 1px solid #334155;
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+    .msg {
+      margin-bottom: 10px;
+      padding: 8px;
+      border-radius: 6px;
+      max-width: 90%;
+    }
+    .user {
+      background: #475569;
+      margin-left: auto;
+      text-align: right;
+    }
+    .bot {
+      background: #334155;
+      margin-right: auto;
+    }
+    #input-area {
+      display: flex;
+      gap: 8px;
+    }
+    input {
+      flex: 1;
+      padding: 8px;
+      border-radius: 6px;
+      border: none;
+      outline: none;
+    }
+    button {
+      padding: 8px 14px;
+      border: none;
+      background: #f97316;
+      color: #fff;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+  </style>
 </head>
-<body class="crt">
+<body>
 
-    <div id="boot-screen">
-        <h1 style="color:var(--neon-pink)">NEON REBEL</h1>
-        <p class="terminal-text">> LOADING ENCRYPTED_MODULES...</p>
-        <p class="terminal-text">> VERIFYING LICENSE_KEY...</p>
-        <p class="terminal-text">> BYPASSING SECURITY_LAYER_07...</p>
-        <button class="btn" onclick="Engine.start()">[ INITIALIZE SYSTEM ]</button>
-    </div>
+<div id="chatbox">
+  <div id="messages"></div>
 
-    <div id="hud">
-        <div class="stat-box">CORE_INTEGRITY: <span id="hp">100</span>%</div>
-        <div class="stat-box">SEC_VIOLATIONS: <span id="score">0</span></div>
-        <div class="stat-box">LOAD_FACTOR: <span id="load">1.0</span>x</div>
-    </div>
-
-    <div id="legal-notice">PROPRIETARY CODE // ALL RIGHTS RESERVED (C) 2026 BINGKAHU</div>
-    <canvas id="stage"></canvas>
+  <div id="input-area">
+    <input id="userInput" placeholder="Say something...">
+    <button onclick="sendMessage()">Send</button>
+  </div>
+</div>
 
 <script>
-/**
- * NEON REBEL GAME ENGINE
- * Professional High-Logic Build
- */
+    
+  const messages = document.getElementById("messages");
 
-// --- 1. PROPRIETARY AUDIO SYNTH (Procedural SFX) ---
-const SFX = {
-    ctx: null,
-    init() { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); },
-    play(freq, type, duration, vol=0.1) {
-        if(!this.ctx) return;
-        const osc = this.ctx.createOscillator();
-        const g = this.ctx.createGain();
-        osc.type = type;
-        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
-        g.gain.setValueAtTime(vol, this.ctx.currentTime);
-        g.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
-        osc.connect(g); g.connect(this.ctx.destination);
-        osc.start(); osc.stop(this.ctx.currentTime + duration);
-    },
-    pew() { this.play(800 + Math.random()*200, 'square', 0.1); },
-    boom() { this.play(100, 'sawtooth', 0.5, 0.2); },
-    powerup() { this.play(1200, 'sine', 0.2); }
-};
+  // Personality-driven responses
+  const botReplies = [
+    "That's an intriguing thought.",
+    "You’ve got a creative mind.",
+    "I didn’t expect that answer.",
+    "Tell me more — I’m curious now.",
+    "Interesting perspective you’ve got there.",
+    "You’re full of ideas today.",
+    "That actually made me think.",
+    "I like where you're going with this.",
+    "Your message just sparked a new idea in me."
+  ];
 
-// --- 2. VECTOR PHYSICS LIBRARY ---
-class Vec2 {
-    constructor(x, y) { this.x = x; this.y = y; }
-    add(v) { return new Vec2(this.x + v.x, this.y + v.y); }
-    sub(v) { return new Vec2(this.x - v.x, this.y - v.y); }
-    mul(s) { return new Vec2(this.x * s, this.y * s); }
-    mag() { return Math.sqrt(this.x**2 + this.y**2); }
-    dist(v) { return this.sub(v).mag(); }
-}
+  function addMessage(text, sender) {
+    const div = document.createElement("div");
+    div.className = "msg " + sender;
+    div.textContent = text;
+    messages.appendChild(div);
+    messages.scrollTop = messages.scrollHeight;
+  }
 
-// --- 3. PARTICLE ENGINE ---
-class Particle {
-    constructor(x, y, color) {
-        this.pos = new Vec2(x, y);
-        this.vel = new Vec2((Math.random()-0.5)*8, (Math.random()-0.5)*8);
-        this.life = 1.0;
-        this.decay = 0.02 + Math.random()*0.03;
-        this.color = color;
-    }
-    update() { this.pos = this.pos.add(this.vel); this.life -= this.decay; }
-}
+  function sendMessage() {
+    const input = document.getElementById("userInput");
+    const text = input.value.trim();
+    if (!text) return;
 
-// --- 4. GAME ENGINE CORE ---
-const Engine = {
-    canvas: document.getElementById('stage'),
-    ctx: null,
-    running: false,
-    player: { pos: new Vec2(0,0), hp: 100 },
-    enemies: [],
-    bullets: [],
-    particles: [],
-    score: 0,
-    keys: {},
+    addMessage(text, "user");
+    input.value = "";
 
-    init() {
-        this.ctx = this.canvas.getContext('2d');
-        this.resize();
-        this.player.pos = new Vec2(this.W/2, this.H/2);
-        window.onresize = () => this.resize();
-        window.onkeydown = e => this.keys[e.code] = true;
-        window.onkeyup = e => this.keys[e.code] = false;
-        window.onmousedown = () => this.shoot();
-    },
+    // Random AI-style reply
+    const reply = botReplies[Math.floor(Math.random() * botReplies.length)];
 
-    resize() {
-        this.W = this.canvas.width = window.innerWidth;
-        this.H = this.canvas.height = window.innerHeight;
-    },
-
-    start() {
-        SFX.init();
-        document.getElementById('boot-screen').style.display = 'none';
-        this.running = true;
-        this.loop();
-    },
-
-    shoot() {
-        if(!this.running) return;
-        SFX.pew();
-        this.bullets.push({ pos: new Vec2(this.player.pos.x, this.player.pos.y), vel: new Vec2(0, -12) });
-    },
-
-    spawnEnemy() {
-        const x = Math.random() * this.W;
-        this.enemies.push({ pos: new Vec2(x, -50), vel: new Vec2(0, 2 + (this.score/500)), r: 15 + Math.random()*20 });
-    },
-
-    update() {
-        // Player Movement
-        const speed = 6;
-        if(this.keys['ArrowLeft'] || this.keys['KeyA']) this.player.pos.x -= speed;
-        if(this.keys['ArrowRight'] || this.keys['KeyD']) this.player.pos.x += speed;
-        if(this.keys['ArrowUp'] || this.keys['KeyW']) this.player.pos.y -= speed;
-        if(this.keys['ArrowDown'] || this.keys['KeyS']) this.player.pos.y += speed;
-
-        // Clamp
-        this.player.pos.x = Math.max(20, Math.min(this.W-20, this.player.pos.x));
-        this.player.pos.y = Math.max(20, Math.min(this.H-20, this.player.pos.y));
-
-        if(Math.random() < 0.05) this.spawnEnemy();
-
-        // Projectile Logic
-        this.bullets.forEach((b, i) => {
-            b.pos = b.pos.add(b.vel);
-            if(b.pos.y < -20) this.bullets.splice(i, 1);
-        });
-
-        // Enemy Collision Logic
-        this.enemies.forEach((e, ei) => {
-            e.pos = e.pos.add(e.vel);
-            
-            // Hit Player
-            if(e.pos.dist(this.player.pos) < e.r + 20) {
-                this.player.hp -= 10;
-                this.explode(e.pos.x, e.pos.y, '#ff0055');
-                this.enemies.splice(ei, 1);
-                SFX.boom();
-                if(this.player.hp <= 0) location.reload();
-            }
-
-            // Hit Bullet
-            this.bullets.forEach((b, bi) => {
-                if(e.pos.dist(b.pos) < e.r) {
-                    this.score += 50;
-                    this.explode(e.pos.x, e.pos.y, '#00f2ff');
-                    this.enemies.splice(ei, 1);
-                    this.bullets.splice(bi, 1);
-                    SFX.powerup();
-                }
-            });
-
-            if(e.pos.y > this.H + 50) this.enemies.splice(ei, 1);
-        });
-
-        this.particles.forEach((p, i) => {
-            p.update();
-            if(p.life <= 0) this.particles.splice(i, 1);
-        });
-
-        document.getElementById('hp').innerText = this.player.hp;
-        document.getElementById('score').innerText = this.score;
-        document.getElementById('load').innerText = (1 + this.score/1000).toFixed(1);
-    },
-
-    explode(x, y, col) {
-        for(let i=0; i<12; i++) this.particles.push(new Particle(x, y, col));
-    },
-
-    draw() {
-        this.ctx.fillStyle = 'rgba(5, 5, 8, 0.2)';
-        this.ctx.fillRect(0, 0, this.W, this.H);
-
-        // Player
-        this.ctx.shadowBlur = 15; this.ctx.shadowColor = '#00f2ff';
-        this.ctx.fillStyle = '#00f2ff';
-        this.ctx.beginPath(); this.ctx.arc(this.player.pos.x, this.player.pos.y, 20, 0, Math.PI*2); this.ctx.fill();
-
-        // Enemies
-        this.ctx.shadowColor = '#ff0055'; this.ctx.fillStyle = '#ff0055';
-        this.enemies.forEach(e => {
-            this.ctx.beginPath(); this.ctx.arc(e.pos.x, e.pos.y, e.r, 0, Math.PI*2); this.ctx.fill();
-        });
-
-        // Particles
-        this.particles.forEach(p => {
-            this.ctx.globalAlpha = p.life;
-            this.ctx.fillStyle = p.color;
-            this.ctx.fillRect(p.pos.x, p.pos.y, 3, 3);
-        });
-        this.ctx.globalAlpha = 1; this.ctx.shadowBlur = 0;
-
-        // Bullets
-        this.ctx.fillStyle = 'white';
-        this.bullets.forEach(b => this.ctx.fillRect(b.pos.x-2, b.pos.y-10, 4, 20));
-    },
-
-    loop() {
-        if(!this.running) return;
-        this.update();
-        this.draw();
-        requestAnimationFrame(() => this.loop());
-    }
-};
-
-window.onload = () => Engine.init();
+    setTimeout(() => {
+      addMessage(reply, "bot");
+    }, 400);
+  }
 </script>
+
 </body>
 </html>
+<script>
+  const messages = document.getElementById("messages");
+
+  // Load memory from localStorage
+  let memory = JSON.parse(localStorage.getItem("chatMemory") || "[]");
+
+  // Bot personality lines
+  const botReplies = [
+    "That's an intriguing thought.",
+    "You’ve got a creative mind.",
+    "I didn’t expect that answer.",
+    "Tell me more — I’m curious now.",
+    "Interesting perspective you’ve got there.",
+    "You’re full of ideas today.",
+    "That actually made me think.",
+    "I like where you're going with this.",
+    "Your message just sparked a new idea in me."
+  ];
+
+  function addMessage(text, sender) {
+    const div = document.createElement("div");
+    div.className = "msg " + sender;
+    div.textContent = text;
+    messages.appendChild(div);
+    messages.scrollTop = messages.scrollHeight;
+  }
+
+  function saveMemory() {
+    // Keep memory small
+    if (memory.length > 20) memory = memory.slice(-20);
+    localStorage.setItem("chatMemory", JSON.stringify(memory));
+  }
+
+  function generateReply(userText) {
+    // Add new memory
+    memory.push(userText);
+    saveMemory();
+
+    // Sometimes reference memory
+    const shouldReferenceMemory = Math.random() < 0.4 && memory.length > 1;
+
+    if (shouldReferenceMemory) {
+      const past = memory[Math.floor(Math.random() * (memory.length - 1))];
+      return `You mentioned "${past}" earlier — how does that connect to this?`;
+    }
+
+    // Otherwise pick a personality line
+    return botReplies[Math.floor(Math.random() * botReplies.length)];
+  }
+
+  function sendMessage() {
+    const input = document.getElementById("userInput");
+    const text = input.value.trim();
+    if (!text) return;
+
+    addMessage(text, "user");
+    input.value = "";
+
+    const reply = generateReply(text);
+
+    setTimeout(() => {
+      addMessage(reply, "bot");
+    }, 400);
+  }
+
+  // Load memory into chat visually when page opens
+  window.onload = () => {
+    if (memory.length > 0) {
+      addMessage("Welcome back. I remember some of our past chats.", "bot");
+    }
+  };
+</script>
