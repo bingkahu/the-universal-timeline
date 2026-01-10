@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Sanic the Porcupine</title>
+  <title>Sanic the Porcupine – Platformer</title>
   <style>
     * {
       box-sizing: border-box;
@@ -42,8 +42,10 @@
       border-radius: 6px;
       image-rendering: pixelated;
       image-rendering: crisp-edges;
-      background: linear-gradient(#1d4ed8 0, #1d4ed8 60%, #16a34a 60%, #14532d 100%);
-      box-shadow: 0 0 24px rgba(15, 23, 42, 0.9);
+      background: #1d4ed8;
+      box-shadow: 0 0 24px rgba(15, 23, 42, 0.8);
+      display: block;
+      margin: 0 auto;
     }
 
     #hud {
@@ -53,6 +55,7 @@
       align-items: center;
       font-size: 13px;
       color: #9ca3af;
+      max-width: 512px;
     }
 
     #score {
@@ -93,15 +96,15 @@
 <body>
   <div class="wrapper">
     <h1>Sanic the Porcupine</h1>
-    <p>Press any key to start. Jump with <strong>Space</strong> or <strong>↑</strong>. Don’t bonk into spikes.</p>
+    <p>Move with <strong>A / D</strong>, jump with <strong>Space</strong> or <strong>↑</strong>. Stomp enemies, avoid touching them from the side.</p>
 
-    <canvas id="game" width="480" height="270"></canvas>
+    <canvas id="game" width="512" height="288"></canvas>
 
     <div id="hud">
       <div>Score: <span id="score">0</span></div>
       <button id="restart" class="btn">Restart</button>
     </div>
-    <div id="status">Waiting for you to go fast...</div>
+    <div id="status">Press any movement key or jump to start.</div>
   </div>
 
   <script>
@@ -115,290 +118,379 @@
       var restartBtn = document.getElementById("restart");
       var statusEl = document.getElementById("status");
 
-      // Game world
       var WIDTH = canvas.width;
       var HEIGHT = canvas.height;
 
-      // “16-bit” style scaling helpers
       function pix(n) {
-        // Basic block size – dial this for chunkiness
         return Math.round(n);
       }
 
-      // Ground
-      var groundY = HEIGHT - pix(40);
+      var GRAVITY = 900;
+      var MOVE_SPEED = 220;
+      var JUMP_FORCE = 400;
 
-      // Player (Sanic)
-      var player = {
-        x: pix(70),
-        y: groundY - pix(24),
-        w: pix(24),
-        h: pix(24),
-        vy: 0,
-        onGround: true,
-        frame: 0,
-        frameTimer: 0
+      var groundHeight = 40;
+
+      var keys = {
+        left: false,
+        right: false,
+        jump: false
       };
 
-      // Obstacles (spikes)
-      var spikes = [];
-      var lastSpawnX = WIDTH;
-      var spawnGapMin = 140;
-      var spawnGapMax = 260;
-
-      // Camera / scroll
-      var speed = 150; // world scroll speed
-      var speedIncrease = 4; // per second
-      var maxSpeed = 420;
-
-      // Game state
       var running = false;
       var gameOver = false;
       var lastTime = 0;
       var score = 0;
 
-      // Input
-      var jumpQueued = false;
+      var cameraX = 0;
+
+      var player = {
+        x: 40,
+        y: HEIGHT - groundHeight - 32,
+        w: 24,
+        h: 24,
+        vx: 0,
+        vy: 0,
+        onGround: false,
+        facing: 1,
+        frame: 0,
+        frameTimer: 0
+      };
+
+      var platforms = [];
+      var enemies = [];
+
+      function createLevel() {
+        platforms = [];
+        enemies = [];
+
+        var groundY = HEIGHT - groundHeight;
+
+        platforms.push({
+          x: 0,
+          y: groundY,
+          w: 800,
+          h: groundHeight
+        });
+
+        platforms.push({ x: 140, y: groundY - 60, w: 90, h: 14 });
+        platforms.push({ x: 280, y: groundY - 110, w: 110, h: 14 });
+        platforms.push({ x: 460, y: groundY - 80, w: 90, h: 14 });
+
+        platforms.push({ x: 620, y: groundY - 50, w: 80, h: 14 });
+        platforms.push({ x: 760, y: groundY - 90, w: 110, h: 14 });
+
+        enemies.push({
+          x: 210,
+          y: groundY - 20,
+          w: 20,
+          h: 20,
+          vx: -50,
+          alive: true,
+          platformIndex: 0
+        });
+
+        enemies.push({
+          x: 310,
+          y: groundY - 110 - 20,
+          w: 20,
+          h: 20,
+          vx: 40,
+          alive: true,
+          platformIndex: 2
+        });
+
+        enemies.push({
+          x: 780,
+          y: groundY - 90 - 20,
+          w: 20,
+          h: 20,
+          vx: -45,
+          alive: true,
+          platformIndex: 4
+        });
+      }
 
       function resetGame() {
-        player.y = groundY - player.h;
+        createLevel();
+
+        player.x = 40;
+        player.y = HEIGHT - groundHeight - player.h;
+        player.vx = 0;
         player.vy = 0;
-        player.onGround = true;
+        player.onGround = false;
+        player.facing = 1;
         player.frame = 0;
         player.frameTimer = 0;
 
-        spikes = [];
-        lastSpawnX = WIDTH;
-        speed = 150;
-        score = 0;
-        scoreEl.textContent = "0";
+        cameraX = 0;
         running = false;
         gameOver = false;
         lastTime = 0;
-        jumpQueued = false;
-        statusEl.textContent = "Press any key to start. Jump with Space or ↑.";
+        score = 0;
+        scoreEl.textContent = "0";
+        statusEl.textContent = "Press A / D / Space / ↑ to start.";
       }
 
-      function spawnSpike(x) {
-        var size = pix(18);
-        var spike = {
-          x: x,
-          y: groundY - size + 4,
-          w: size,
-          h: size,
-        };
-        spikes.push(spike);
+      function rectsIntersect(a, b) {
+        return (
+          a.x < b.x + b.w &&
+          a.x + a.w > b.x &&
+          a.y < b.y + b.h &&
+          a.y + a.h > b.y
+        );
       }
 
-      function ensureSpikes() {
-        while (lastSpawnX < WIDTH + 300) {
-          var gap = spawnGapMin + Math.random() * (spawnGapMax - spawnGapMin);
-          lastSpawnX += gap;
-          spawnSpike(lastSpawnX);
+      function applyHorizontalCollision(entity, plat) {
+        if (!rectsIntersect(entity, plat)) return;
+
+        if (entity.vx > 0) {
+          entity.x = plat.x - entity.w;
+        } else if (entity.vx < 0) {
+          entity.x = plat.x + plat.w;
         }
+        entity.vx = 0;
       }
 
-      function jump() {
-        if (player.onGround && !gameOver) {
-          player.vy = -320;
-          player.onGround = false;
+      function applyVerticalCollision(entity, plat) {
+        if (!rectsIntersect(entity, plat)) return;
+
+        var prevBottom = entity.y + entity.h - entity.vy * (1 / 60);
+        var prevTop = entity.y - entity.vy * (1 / 60);
+
+        if (entity.vy > 0) {
+          entity.y = plat.y - entity.h;
+          entity.vy = 0;
+          entity.onGround = true;
+        } else if (entity.vy < 0) {
+          entity.y = plat.y + plat.h;
+          entity.vy = 0;
         }
       }
 
       function update(dt) {
         if (!running) return;
 
-        // Increase difficulty over time
-        speed += speedIncrease * dt;
-        if (speed > maxSpeed) speed = maxSpeed;
+        var targetVX = 0;
+        if (keys.left) targetVX -= MOVE_SPEED;
+        if (keys.right) targetVX += MOVE_SPEED;
 
-        // Apply jump if queued
-        if (jumpQueued) {
-          jump();
-          jumpQueued = false;
+        player.vx = targetVX;
+        if (targetVX !== 0) {
+          player.facing = targetVX > 0 ? 1 : -1;
         }
 
-        // Gravity
-        player.vy += 900 * dt;
+        if (keys.jump && player.onGround) {
+          player.vy = -JUMP_FORCE;
+          player.onGround = false;
+        }
+
+        player.vy += GRAVITY * dt;
+
+        player.x += player.vx * dt;
+        player.onGround = false;
+
+        for (var i = 0; i < platforms.length; i++) {
+          applyHorizontalCollision(player, platforms[i]);
+        }
+
         player.y += player.vy * dt;
 
-        // Ground collision
-        if (player.y + player.h >= groundY) {
-          player.y = groundY - player.h;
-          player.vy = 0;
-          player.onGround = true;
+        for (var j = 0; j < platforms.length; j++) {
+          applyVerticalCollision(player, platforms[j]);
         }
 
-        // Animate Sanic (simple 2-frame run)
-        if (player.onGround) {
+        if (player.onGround && Math.abs(player.vx) > 10) {
           player.frameTimer += dt;
-          var frameDuration = 0.12;
-          if (player.frameTimer >= frameDuration) {
+          if (player.frameTimer > 0.12) {
             player.frameTimer = 0;
             player.frame = (player.frame + 1) % 2;
           }
         } else {
           player.frame = 0;
+          player.frameTimer = 0;
         }
 
-        // Move spikes left
-        for (var i = spikes.length - 1; i >= 0; i--) {
-          var s = spikes[i];
-          s.x -= speed * dt;
+        var levelEnd = 800 - 150;
+        cameraX = player.x - 120;
+        if (cameraX < 0) cameraX = 0;
+        if (cameraX > levelEnd) cameraX = levelEnd;
 
-          // Remove off-screen spikes
-          if (s.x + s.w < -40) {
-            spikes.splice(i, 1);
+        enemies.forEach(function (e) {
+          if (!e.alive) return;
+
+          e.x += e.vx * dt;
+
+          var plat = platforms[e.platformIndex];
+          if (plat) {
+            if (e.x < plat.x) {
+              e.x = plat.x;
+              e.vx = Math.abs(e.vx);
+            } else if (e.x + e.w > plat.x + plat.w) {
+              e.x = plat.x + plat.w - e.w;
+              e.vx = -Math.abs(e.vx);
+            }
           }
-        }
 
-        // Spawn new spikes when needed
-        if (spikes.length === 0) {
-          lastSpawnX = WIDTH;
-        } else {
-          lastSpawnX = spikes[spikes.length - 1].x;
-        }
-        ensureSpikes();
+          var pRect = { x: player.x, y: player.y, w: player.w, h: player.h };
+          var eRect = { x: e.x, y: e.y, w: e.w, h: e.h };
 
-        // Collision detection
-        for (var j = 0; j < spikes.length; j++) {
-          var sp = spikes[j];
-          if (
-            player.x < sp.x + sp.w &&
-            player.x + player.w > sp.x &&
-            player.y < sp.y + sp.h &&
-            player.y + player.h > sp.y
-          ) {
-            handleGameOver();
-            return;
+          if (rectsIntersect(pRect, eRect)) {
+            var playerFeet = player.y + player.h;
+            var enemyTop = e.y + 4;
+
+            if (player.vy > 0 && playerFeet <= enemyTop) {
+              e.alive = false;
+              player.vy = -JUMP_FORCE * 0.6;
+              score += 100;
+              scoreEl.textContent = score.toString();
+            } else {
+              handleGameOver();
+            }
           }
-        }
+        });
 
-        // Score (distance)
-        score += speed * dt * 0.05;
-        scoreEl.textContent = Math.floor(score);
+        score += dt * 20;
+        scoreEl.textContent = Math.floor(score).toString();
+
+        if (player.y > HEIGHT + 50) {
+          handleGameOver();
+        }
       }
 
       function handleGameOver() {
+        if (gameOver) return;
         gameOver = true;
         running = false;
-        statusEl.textContent = "Bonked! Score: " + Math.floor(score) + ". Press Restart or any key to go again.";
+        statusEl.textContent =
+          "Game Over! Final score: " + Math.floor(score) + ". Press Restart or any key.";
       }
 
-      // Drawing helpers (keep it chunky/retro-ish)
       function drawBackground() {
-        // Sky (already canvas background)
-        // Far hills
-        ctx.fillStyle = "#1e3a8a";
-        ctx.fillRect(0, groundY - pix(70), WIDTH, pix(40));
-
         ctx.fillStyle = "#1d4ed8";
-        ctx.fillRect(0, groundY - pix(50), WIDTH, pix(30));
+        ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
-        // Ground main
-        ctx.fillStyle = "#16a34a";
-        ctx.fillRect(0, groundY, WIDTH, HEIGHT - groundY);
-
-        // Ground darker stripe
-        ctx.fillStyle = "#15803d";
-        ctx.fillRect(0, groundY + pix(10), WIDTH, HEIGHT - groundY - pix(10));
-
-        // Little grass tufts
-        ctx.fillStyle = "#22c55e";
-        for (var x = 0; x < WIDTH; x += 32) {
-          ctx.fillRect(x + 4, groundY - 3, 3, 3);
-          ctx.fillRect(x + 10, groundY - 4, 3, 4);
-          ctx.fillRect(x + 18, groundY - 3, 3, 3);
+        ctx.fillStyle = "#93c5fd";
+        for (var i = 0; i < 3; i++) {
+          var cx = ((i * 160 - cameraX * 0.4) % (WIDTH + 160)) - 80;
+          var cy = 60 + (i % 2) * 20;
+          ctx.beginPath();
+          ctx.arc(cx, cy, 26, 0, Math.PI * 2);
+          ctx.arc(cx + 18, cy + 6, 20, 0, Math.PI * 2);
+          ctx.arc(cx - 18, cy + 6, 20, 0, Math.PI * 2);
+          ctx.fill();
         }
       }
 
+      function drawPlatforms() {
+        platforms.forEach(function (p) {
+          var sx = Math.round(p.x - cameraX);
+          var sy = Math.round(p.y);
+
+          if (sy >= HEIGHT || sx + p.w < -50 || sx > WIDTH + 50) return;
+
+          if (p.h >= groundHeight - 1) {
+            ctx.fillStyle = "#16a34a";
+            ctx.fillRect(sx, sy, p.w, p.h);
+            ctx.fillStyle = "#14532d";
+            ctx.fillRect(sx, sy + 10, p.w, p.h - 10);
+
+            ctx.fillStyle = "#22c55e";
+            for (var x = sx; x < sx + p.w; x += 12) {
+              ctx.fillRect(x, sy - 3, 4, 3);
+            }
+          } else {
+            ctx.fillStyle = "#16a34a";
+            ctx.fillRect(sx, sy, p.w, p.h);
+            ctx.fillStyle = "#14532d";
+            ctx.fillRect(sx, sy + p.h - 3, p.w, 3);
+          }
+        });
+      }
+
       function drawSanic() {
-        var x = Math.round(player.x);
+        var x = Math.round(player.x - cameraX);
         var y = Math.round(player.y);
         var w = player.w;
         var h = player.h;
 
-        // Body (blue square)
-        ctx.fillStyle = "#1d4ed8";
-        ctx.fillRect(x, y + pix(4), w, pix(16));
+        ctx.save();
+        ctx.translate(x + w / 2, y + h / 2);
+        ctx.scale(player.facing, 1);
+        ctx.translate(-w / 2, -h / 2);
 
-        // Head
+        ctx.fillStyle = "#1d4ed8";
+        ctx.fillRect(0, 4, w, 16);
+
         ctx.fillStyle = "#2563eb";
-        ctx.fillRect(x + pix(12), y, pix(10), pix(10));
+        ctx.fillRect(10, 0, 10, 10);
 
-        // Face
         ctx.fillStyle = "#fee2e2";
-        ctx.fillRect(x + pix(14), y + pix(2), pix(6), pix(6));
+        ctx.fillRect(12, 2, 6, 6);
 
-        // Eye
         ctx.fillStyle = "#000000";
-        ctx.fillRect(x + pix(18), y + pix(3), pix(2), pix(2));
+        ctx.fillRect(16, 3, 2, 2);
 
-        // Spikes (two blue triangles-ish)
         ctx.fillStyle = "#1d4ed8";
-        ctx.fillRect(x + pix(4), y + pix(2), pix(6), pix(3));
-        ctx.fillRect(x + pix(2), y + pix(6), pix(6), pix(3));
+        ctx.fillRect(4, 2, 6, 3);
+        ctx.fillRect(2, 6, 6, 3);
 
-        // Legs / running animation
         ctx.fillStyle = "#f97316";
-        if (player.onGround) {
+        if (player.onGround && Math.abs(player.vx) > 10) {
           if (player.frame === 0) {
-            ctx.fillRect(x + pix(4), y + pix(20), pix(6), pix(4));
-            ctx.fillRect(x + pix(14), y + pix(20), pix(6), pix(4));
+            ctx.fillRect(4, 20, 6, 4);
+            ctx.fillRect(14, 20, 6, 4);
           } else {
-            ctx.fillRect(x + pix(6), y + pix(20), pix(6), pix(4));
-            ctx.fillRect(x + pix(12), y + pix(20), pix(6), pix(4));
+            ctx.fillRect(6, 20, 6, 4);
+            ctx.fillRect(12, 20, 6, 4);
           }
         } else {
-          ctx.fillRect(x + pix(6), y + pix(20), pix(12), pix(4));
+          ctx.fillRect(6, 20, 12, 4);
         }
 
-        // Arms
         ctx.fillStyle = "#fbbf24";
-        ctx.fillRect(x + pix(2), y + pix(10), pix(4), pix(4));
-        ctx.fillRect(x + pix(18), y + pix(10), pix(4), pix(4));
+        ctx.fillRect(2, 10, 4, 4);
+        ctx.fillRect(18, 10, 4, 4);
+
+        ctx.restore();
       }
 
-      function drawSpikes() {
-        ctx.fillStyle = "#e5e7eb";
-        spikes.forEach(function (s) {
-          var sx = Math.round(s.x);
-          var sy = Math.round(s.y);
-          var size = s.w;
+      function drawEnemies() {
+        enemies.forEach(function (e) {
+          if (!e.alive) return;
+          var x = Math.round(e.x - cameraX);
+          var y = Math.round(e.y);
+          var w = e.w;
+          var h = e.h;
 
-          // Simple triangle-ish spike
-          ctx.fillRect(sx + size * 0.4, sy, pix(size * 0.2), pix(size));
-          ctx.fillRect(sx + size * 0.2, sy + size * 0.3, pix(size * 0.2), pix(size * 0.7));
-          ctx.fillRect(sx + size * 0.6, sy + size * 0.3, pix(size * 0.2), pix(size * 0.7));
+          if (x + w < -10 || x > WIDTH + 10) return;
 
-          ctx.fillStyle = "#9ca3af";
-          ctx.fillRect(sx, sy + size - 3, size, 3);
-          ctx.fillStyle = "#e5e7eb";
+          ctx.fillStyle = "#dc2626";
+          ctx.fillRect(x, y + 4, w, h - 4);
+
+          ctx.fillStyle = "#fecaca";
+          ctx.fillRect(x + 4, y + 2, w - 8, 6);
+
+          ctx.fillStyle = "#000000";
+          ctx.fillRect(x + 6, y + 4, 2, 2);
+          ctx.fillRect(x + w - 8, y + 4, 2, 2);
+
+          ctx.fillStyle = "#4b5563";
+          ctx.fillRect(x, y + h - 4, w, 4);
         });
       }
 
       function draw() {
-        // Clear
-        ctx.clearRect(0, 0, WIDTH, HEIGHT);
-
-        // Background & world
         drawBackground();
-
-        // Spikes and player
-        drawSpikes();
+        drawPlatforms();
+        drawEnemies();
         drawSanic();
-
-        // Optional: horizon “speed lines”
-        ctx.fillStyle = "rgba(239, 246, 255, 0.18)";
-        for (var i = 0; i < 4; i++) {
-          var y = 40 + i * 16;
-          ctx.fillRect((Date.now() / 4 + i * 60) % WIDTH, y, 40, 2);
-        }
       }
 
       function loop(timestamp) {
         if (!lastTime) lastTime = timestamp;
         var dt = (timestamp - lastTime) / 1000;
+        if (dt > 0.03) dt = 0.03;
         lastTime = timestamp;
 
         if (!gameOver && running) {
@@ -409,42 +501,55 @@
         requestAnimationFrame(loop);
       }
 
-      // Input handling
       function handleKeyDown(e) {
+        if (e.code === "KeyA" || e.key === "a" || e.key === "A") {
+          keys.left = true;
+        }
+        if (e.code === "KeyD" || e.key === "d" || e.key === "D") {
+          keys.right = true;
+        }
         if (
           e.code === "Space" ||
           e.code === "ArrowUp" ||
           e.key === " " ||
           e.key === "ArrowUp"
         ) {
-          if (!running && !gameOver) {
-            running = true;
-            statusEl.textContent = "";
-          }
-          jumpQueued = true;
-        } else {
-          // Any other key can start the game
-          if (!running && !gameOver) {
-            running = true;
-            statusEl.textContent = "";
-          }
+          keys.jump = true;
         }
 
-        if (gameOver) {
-          // Press any key to restart
+        if (!running && !gameOver) {
+          running = true;
+          statusEl.textContent = "";
+        } else if (gameOver) {
           resetGame();
         }
       }
 
+      function handleKeyUp(e) {
+        if (e.code === "KeyA" || e.key === "a" || e.key === "A") {
+          keys.left = false;
+        }
+        if (e.code === "KeyD" || e.key === "d" || e.key === "D") {
+          keys.right = false;
+        }
+        if (
+          e.code === "Space" ||
+          e.code === "ArrowUp" ||
+          e.key === " " ||
+          e.key === "ArrowUp"
+        ) {
+          keys.jump = false;
+        }
+      }
+
       window.addEventListener("keydown", handleKeyDown);
+      window.addEventListener("keyup", handleKeyUp);
 
       restartBtn.addEventListener("click", function () {
         resetGame();
       });
 
-      // Init
       resetGame();
-      ensureSpikes();
       requestAnimationFrame(loop);
     })();
   </script>
