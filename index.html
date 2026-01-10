@@ -2,132 +2,133 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SANIC THE PORCUPINE: GITHUB EDITION</title>
+    <title>SANIC: TRACK RACER & COMMS</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #005bc5; font-family: 'Comic Sans MS', cursive; }
-        #game-canvas { display: block; background: linear-gradient(#87CEEB, #228B22); }
-        #ui {
-            position: absolute; top: 10px; left: 10px; color: yellow;
-            font-size: 24px; text-shadow: 2px 2px black; pointer-events: none;
+        :root { --sanic-blue: #0044ff; --grass: #228b22; --track: #444; }
+        body { margin: 0; overflow: hidden; background: #000; font-family: monospace; }
+        
+        /* The Racing Track Layout */
+        #game-container { position: relative; width: 100vw; height: 100vh; }
+        canvas { display: block; }
+
+        /* Secret Chat Overlay */
+        #chat-sys {
+            position: absolute; bottom: 20px; right: 20px;
+            width: 300px; height: 200px;
+            background: rgba(0,0,0,0.8);
+            border: 1px solid var(--sanic-blue);
+            display: flex; flex-direction: column;
+            padding: 10px; font-size: 12px; color: #0f0;
+            box-shadow: 0 0 15px var(--sanic-blue);
         }
-        .controls {
-            position: absolute; bottom: 20px; width: 100%; text-align: center;
-            color: white; font-size: 12px; opacity: 0.5;
+        #chat-logs { flex-grow: 1; overflow-y: auto; margin-bottom: 5px; }
+        #chat-input { 
+            background: #111; border: 1px solid #333; 
+            color: #0f0; padding: 5px; outline: none; 
         }
+        .msg { margin-bottom: 4px; border-bottom: 1px solid #222; }
+        .hint { position: absolute; top: 10px; right: 10px; color: yellow; font-size: 10px; }
     </style>
 </head>
 <body>
 
-<div id="ui">RINGS: <span id="ring-count">0</span><br>SPEED: <span id="speed-val">0</span></div>
-<canvas id="game-canvas"></canvas>
-<div class="controls">ARROWS TO MOVE | SPACE TO SPINDASH | GOTTA GO FAST</div>
+<div id="game-container">
+    <canvas id="trackCanvas"></canvas>
+    
+    <div id="chat-sys">
+        <div style="font-weight:bold; color:var(--sanic-blue)">LOCAL_COMMS_v1.0</div>
+        <div id="chat-logs"></div>
+        <input type="text" id="chat-input" placeholder="Type message..." maxlength="50">
+    </div>
+
+    <div class="hint">GO FAST TO UNLOCK CHAT LOGS</div>
+</div>
 
 <script>
-    const canvas = document.getElementById('game-canvas');
+    const canvas = document.getElementById('trackCanvas');
     const ctx = canvas.getContext('2d');
-    const ringEl = document.getElementById('ring-count');
-    const speedEl = document.getElementById('speed-val');
-
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    let rings = 0;
+    // --- SANIC RACING LOGIC ---
+    let sanic = { x: 100, y: 100, angle: 0, speed: 0, maxSpeed: 15 };
     const keys = {};
-
-    const sanic = {
-        x: 100, y: canvas.height - 150,
-        vx: 0, vy: 0,
-        width: 80, height: 80,
-        speed: 0.8, friction: 0.95, gravity: 0.6,
-        jumpPower: -15, grounded: false
-    };
 
     window.addEventListener('keydown', e => keys[e.code] = true);
     window.addEventListener('keyup', e => keys[e.code] = false);
 
-    function drawSanic() {
-        // The "Sanic" Look: Blue circle with messy spikes
-        ctx.save();
-        ctx.translate(sanic.x + sanic.width/2, sanic.y + sanic.height/2);
+    function drawTrack() {
+        ctx.fillStyle = var(--grass);
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
         
-        // Rotation based on speed
-        ctx.rotate(sanic.vx * 0.1);
-
-        // Body
-        ctx.fillStyle = '#0000ff';
+        // Simple Oval Track
+        ctx.strokeStyle = '#666';
+        ctx.lineWidth = 100;
         ctx.beginPath();
-        ctx.arc(0, 0, 35, 0, Math.PI * 2);
+        ctx.ellipse(canvas.width/2, canvas.height/2, canvas.width/3, canvas.height/3, 0, 0, Math.PI*2);
+        ctx.stroke();
+    }
+
+    function drawSanic() {
+        ctx.save();
+        ctx.translate(sanic.x, sanic.y);
+        ctx.rotate(sanic.angle);
+        
+        // The Blue Blur
+        ctx.fillStyle = '#00f';
+        ctx.beginPath();
+        ctx.arc(0, 0, 20, 0, Math.PI*2);
         ctx.fill();
-
-        // Messy Spikes
-        ctx.strokeStyle = '#0000ff';
-        ctx.lineWidth = 8;
-        for(let i=0; i<5; i++) {
-            ctx.beginPath();
-            ctx.moveTo(-30, -10 + (i*10));
-            ctx.lineTo(-50, -20 + (i*15));
-            ctx.stroke();
-        }
-
-        // Eyes (Derpy Sanic Style)
-        ctx.fillStyle = 'white';
-        ctx.beginPath(); ctx.arc(-10, -10, 10, 0, Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.arc(15, -10, 10, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = 'black';
-        ctx.beginPath(); ctx.arc(-8, -8, 3, 0, Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.arc(17, -8, 3, 0, Math.PI*2); ctx.fill();
-
+        // Spikes
+        ctx.beginPath();
+        ctx.moveTo(-20, 0); ctx.lineTo(-35, -10); ctx.lineTo(-20, -5); ctx.fill();
         ctx.restore();
     }
 
-    function update() {
-        // Movement Logic
-        if (keys['ArrowRight']) sanic.vx += sanic.speed;
-        if (keys['ArrowLeft']) sanic.vx -= sanic.speed;
-        if (keys['Space'] && sanic.grounded) {
-            sanic.vy = sanic.jumpPower;
-            sanic.grounded = false;
-        }
+    function gameLoop() {
+        drawTrack();
 
-        // Physics
-        sanic.vx *= sanic.friction;
-        sanic.vy += sanic.gravity;
-        sanic.x += sanic.vx;
-        sanic.y += sanic.vy;
+        // Control Logic
+        if (keys['ArrowUp']) sanic.speed = Math.min(sanic.speed + 0.2, sanic.maxSpeed);
+        else sanic.speed *= 0.98;
 
-        // Ground Collision
-        if (sanic.y + sanic.height > canvas.height - 50) {
-            sanic.y = canvas.height - 50 - sanic.height;
-            sanic.vy = 0;
-            sanic.grounded = true;
-        }
+        if (keys['ArrowLeft']) sanic.angle -= 0.05;
+        if (keys['ArrowRight']) sanic.angle += 0.05;
 
-        // Screen Wrap
-        if (sanic.x > canvas.width) sanic.x = -sanic.width;
-        if (sanic.x < -sanic.width) sanic.x = canvas.width;
+        sanic.x += Math.cos(sanic.angle) * sanic.speed;
+        sanic.y += Math.sin(sanic.angle) * sanic.speed;
 
-        // Score logic based on speed
-        if (Math.abs(sanic.vx) > 15) {
-            rings++;
-            ringEl.innerText = Math.floor(rings / 10);
-        }
-        speedEl.innerText = Math.abs(sanic.vx).toFixed(1);
-    }
-
-    function loop() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // Draw Floor
-        ctx.fillStyle = '#32CD32';
-        ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
-
-        update();
         drawSanic();
-        requestAnimationFrame(loop);
+        requestAnimationFrame(gameLoop);
     }
 
-    loop();
+    // --- LOCAL CHAT LOGIC ---
+    const input = document.getElementById('chat-input');
+    const logs = document.getElementById('chat-logs');
+
+    // Load existing chat from localStorage
+    function loadChat() {
+        const history = JSON.parse(localStorage.getItem('sanic_chat') || '[]');
+        logs.innerHTML = history.map(m => `<div class="msg">> ${m}</div>`).join('');
+        logs.scrollTop = logs.scrollHeight;
+    }
+
+    input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && input.value.trim() !== "") {
+            const history = JSON.parse(localStorage.getItem('sanic_chat') || '[]');
+            history.push(input.value);
+            if (history.length > 15) history.shift(); // Keep it light
+            localStorage.setItem('sanic_chat', JSON.stringify(history));
+            input.value = "";
+            loadChat();
+        }
+    });
+
+    // Sync chat across tabs/windows
+    window.addEventListener('storage', () => loadChat());
+
+    loadChat();
+    gameLoop();
 </script>
 </body>
 </html>
