@@ -2,118 +2,338 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>GITHUB COMMS: P2P COMMS</title>
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KIRBY: THE GLITCH ARCHIVES</title>
     <style>
-        :root { --blue: #007AFF; --dark: #121212; --msg-in: #26262b; }
-        body { margin: 0; background: #000; font-family: sans-serif; color: white; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Press Start 2P', 'Courier New', monospace; }
+        canvas { display: block; image-rendering: pixelated; }
         
-        /* Sanic background layer */
-        #bg { position: fixed; top:0; left:0; width:100%; height:100%; z-index: 1; opacity: 0.2; pointer-events: none; }
-
-        #setup-overlay {
-            position: fixed; z-index: 100; top:0; left:0; width:100%; height:100%;
-            background: rgba(0,0,0,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center;
+        /* CRT SCANLINE OVERLAY */
+        #crt::before {
+            content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 100; background-size: 100% 4px, 3px 100%; pointer-events: none;
         }
 
-        #chat-ui { position: relative; z-index: 10; display: flex; flex-direction: column; height: 100%; max-width: 500px; margin: 0 auto; width: 100%; background: var(--dark); }
-        #logs { flex-grow: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
-        
-        .bubble { max-width: 80%; padding: 10px 15px; border-radius: 18px; font-size: 15px; line-height: 1.4; }
-        .sent { align-self: flex-end; background: var(--blue); border-bottom-right-radius: 4px; }
-        .recv { align-self: flex-start; background: var(--msg-in); border-bottom-left-radius: 4px; }
-
-        #input-bar { padding: 15px; display: flex; gap: 10px; border-top: 1px solid #333; }
-        input { flex-grow: 1; background: #333; border: none; border-radius: 20px; padding: 10px 15px; color: white; outline: none; }
-        button { background: var(--blue); border: none; color: white; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; }
+        #hud {
+            position: absolute; top: 20px; left: 20px; color: #fff; z-index: 101;
+            background: rgba(255, 105, 180, 0.3); padding: 15px; border: 4px inset #ffb6c1;
+        }
+        .hp-outer { width: 200px; height: 16px; background: #555; border: 2px solid #fff; margin: 5px 0; }
+        #hp-inner { width: 100%; height: 100%; background: #00ff00; }
+        #boss-ui { 
+            position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
+            display: none; text-align: center; color: yellow;
+        }
     </style>
 </head>
 <body>
 
-<canvas id="bg"></canvas>
-
-<div id="setup-overlay">
-    <h2 style="color:var(--blue)">GITHUB COMMS LINK</h2>
-    <p>Your ID: <span id="my-id" style="color:yellow">...</span></p>
-    <input type="text" id="peer-id-input" placeholder="Enter Friend's ID" style="width: 250px; margin-bottom: 10px;">
-    <button id="connect-btn" style="border-radius: 5px; width: 200px; height: 40px;">CONNECT DIMENSIONS</button>
-</div>
-
-<div id="chat-ui">
-    <div style="padding: 10px; text-align: center; border-bottom: 1px solid #333; font-size: 12px;">ENCRYPTED P2P LINE</div>
-    <div id="logs"></div>
-    <div id="input-bar">
-        <input type="text" id="msg-input" placeholder="Message">
-        <button id="send-btn">↑</button>
+<div id="crt"></div>
+<div id="hud">
+    <div style="color: #ffff00; font-size: 14px;">KIRBY_SYSTEM_CORE</div>
+    <div class="hp-outer"><div id="hp-inner"></div></div>
+    <div style="font-size: 10px;">
+        STARS: <span id="stars">0</span> | POWER: <span id="pwr">NONE</span><br>
+        DIST: <span id="dist">0</span>m
     </div>
 </div>
 
+<div id="boss-ui">
+    <div>DEDE-GLITCH BOSS</div>
+    <div class="hp-outer" style="width: 400px;"><div id="boss-hp" style="width: 100%; background: red;"></div></div>
+</div>
+
+<canvas id="game"></canvas>
+
 <script>
-    // --- PEER LOGIC ---
-    const peer = new Peer(); 
-    let conn;
+/**
+ * VETERAN CODER ENGINE v3.0 - "THE MONOLITH"
+ */
 
-    peer.on('open', (id) => {
-        document.getElementById('my-id').innerText = id;
-    });
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const hpBar = document.getElementById('hp-inner');
+const starCounter = document.getElementById('stars');
+const distCounter = document.getElementById('dist');
+const powerUI = document.getElementById('pwr');
 
-    // Handle incoming connections
-    peer.on('connection', (c) => {
-        conn = c;
-        setupChat();
-        document.getElementById('setup-overlay').style.display = 'none';
-    });
+// --- AUDIO SYNTHESIZER ---
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playSound(freq, type, duration) {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+}
 
-    document.getElementById('connect-btn').onclick = () => {
-        const remoteId = document.getElementById('peer-id-input').value;
-        conn = peer.connect(remoteId);
-        setupChat();
-        document.getElementById('setup-overlay').style.display = 'none';
-    };
+// --- ENGINE STATE ---
+const world = {
+    gravity: 0.45,
+    friction: 0.88,
+    cameraX: 0,
+    shake: 0,
+    width: 20000,
+    ground: 0,
+    frame: 0,
+    score: 0,
+    bossActive: false
+};
 
-    function setupChat() {
-        conn.on('data', (data) => {
-            addBubble(data, 'recv');
+const input = { left: false, right: false, up: false, attack: false };
+window.onkeydown = (e) => handleKey(e.code, true);
+window.onkeyup = (e) => handleKey(e.code, false);
+
+function handleKey(code, isDown) {
+    if (code === 'ArrowLeft') input.left = isDown;
+    if (code === 'ArrowRight') input.right = isDown;
+    if (code === 'Space') input.up = isDown;
+    if (code === 'KeyX') input.attack = isDown;
+    // Audio unlock for browsers
+    if (isDown && audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+// --- ENTITY SYSTEM ---
+class Entity {
+    constructor(x, y, w, h) {
+        this.x = x; this.y = y; this.w = w; this.h = h;
+        this.vx = 0; this.vy = 0;
+        this.dead = false;
+    }
+}
+
+class Enemy extends Entity {
+    constructor(x, y, type) {
+        super(x, y, 40, 40);
+        this.type = type;
+        this.dir = -1;
+    }
+    update() {
+        this.vx = this.dir * 2;
+        this.vy += world.gravity;
+        this.x += this.vx;
+        this.y += this.vy;
+
+        // Collision with platforms
+        platforms.forEach(p => {
+            if (this.x < p.x + p.w && this.x + this.w > p.x && this.y + this.h > p.y && this.y + this.h < p.y + p.h) {
+                this.y = p.y - this.h; this.vy = 0;
+            }
         });
+
+        // Edge Detection
+        if (this.x < 0 || this.x > world.width) this.dir *= -1;
+        
+        ctx.fillStyle = this.type === 'fire' ? '#ff4400' : '#44aaff';
+        ctx.fillRect(this.x - world.cameraX, this.y, this.w, this.h);
+        ctx.fillStyle = 'white';
+        ctx.fillRect(this.x - world.cameraX + (this.dir > 0 ? 25 : 5), this.y + 10, 10, 10);
+    }
+}
+
+class Particle extends Entity {
+    constructor(x, y, color) {
+        super(x, y, 4, 4);
+        this.vx = (Math.random() - 0.5) * 10;
+        this.vy = (Math.random() - 0.5) * 10;
+        this.life = 1.0;
+        this.color = color;
+    }
+    draw() {
+        this.life -= 0.02;
+        this.x += this.vx; this.y += this.vy;
+        ctx.globalAlpha = this.life;
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x - world.cameraX, this.y, this.w, this.h);
+        ctx.globalAlpha = 1;
+    }
+}
+
+// --- PLAYER OBJECT ---
+const player = {
+    x: 200, y: 100, w: 45, h: 45,
+    vx: 0, vy: 0,
+    hp: 100,
+    power: 'NONE',
+    facing: 1,
+    update() {
+        if (input.left) { this.vx -= 0.9; this.facing = -1; }
+        if (input.right) { this.vx += 0.9; this.facing = 1; }
+        if (input.up) { 
+            this.vy = -6; 
+            if (world.frame % 10 === 0) playSound(200 + Math.random() * 100, 'square', 0.1);
+        }
+
+        this.vx *= world.friction;
+        this.vy += world.gravity;
+        this.x += this.vx;
+        this.y += this.vy;
+
+        if (this.y > world.ground - this.h) {
+            this.y = world.ground - this.h;
+            this.vy = 0;
+        }
+
+        if (input.attack && world.frame % 20 === 0) {
+            this.shoot();
+        }
+    },
+    shoot() {
+        let bType = this.power === 'FIRE' ? 'plasma' : 'star';
+        bullets.push({x: this.x, y: this.y + 10, vx: this.facing * 12, type: bType});
+        playSound(this.power === 'FIRE' ? 150 : 600, 'sawtooth', 0.2);
+        world.shake = 5;
+    },
+    draw() {
+        ctx.save();
+        ctx.translate(this.x - world.cameraX + 22, this.y + 22);
+        ctx.scale(this.facing, 1 + (this.vy * 0.02));
+        
+        // Body
+        ctx.fillStyle = this.power === 'FIRE' ? '#ff6600' : '#FFB6C1';
+        ctx.beginPath();
+        ctx.arc(0, 0, 22, 0, Math.PI*2);
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Eyes
+        ctx.fillStyle = '#000';
+        ctx.fillRect(5, -12, 5, 12);
+        ctx.fillRect(14, -12, 5, 12);
+        ctx.restore();
+    }
+};
+
+// --- WORLD GEN ---
+const platforms = [];
+const enemies = [];
+const stars = [];
+const bullets = [];
+const particles = [];
+
+function init() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    world.ground = canvas.height - 50;
+
+    for(let i=0; i<60; i++) {
+        let px = i * 400 + 500;
+        let py = world.ground - 150 - Math.random() * 200;
+        platforms.push({x: px, y: py, w: 200, h: 30});
+        
+        if (Math.random() > 0.4) enemies.push(new Enemy(px + 50, py - 40, Math.random() > 0.7 ? 'fire' : 'normal'));
+        stars.push({x: px + 90, y: py - 60, collected: false});
+    }
+}
+
+// --- MAIN LOOP ---
+function loop() {
+    world.frame++;
+    ctx.clearRect(0,0, canvas.width, canvas.height);
+    
+    // Background Parallax
+    ctx.fillStyle = '#111';
+    ctx.fillRect(0,0, canvas.width, canvas.height);
+    for(let i=0; i<20; i++) {
+        ctx.fillStyle = `rgba(255,182,193,${0.1 + (i*0.01)})`;
+        ctx.fillRect((i*500 - world.cameraX * (i*0.05)) % world.width, 100 + (i*20), 100, 100);
     }
 
-    // --- UI LOGIC ---
-    const logs = document.getElementById('logs');
-    const input = document.getElementById('msg-input');
+    // Camera
+    let targetCam = player.x - canvas.width/3;
+    world.cameraX += (targetCam - world.cameraX) * 0.1;
 
-    function addBubble(text, type) {
-        const b = document.createElement('div');
-        b.className = `bubble ${type}`;
-        b.innerText = text;
-        logs.appendChild(b);
-        logs.scrollTop = logs.scrollHeight;
+    if (world.shake > 0) {
+        ctx.translate(Math.random()*world.shake, Math.random()*world.shake);
+        world.shake *= 0.9;
     }
 
-    function send() {
-        const val = input.value;
-        if(!val || !conn) return;
-        conn.send(val);
-        addBubble(val, 'sent');
-        input.value = "";
-    }
+    // Render Platforms
+    ctx.fillStyle = '#444';
+    platforms.forEach(p => {
+        ctx.fillRect(p.x - world.cameraX, p.y, p.w, p.h);
+        ctx.strokeStyle = '#ffb6c1';
+        ctx.strokeRect(p.x - world.cameraX, p.y, p.w, p.h);
 
-    document.getElementById('send-btn').onclick = send;
-    input.onkeypress = (e) => { if(e.key === 'Enter') send(); };
+        // Player Collision
+        if (player.x + player.w > p.x && player.x < p.x + p.w &&
+            player.y + player.h > p.y && player.y + player.h < p.y + p.h + 20 && player.vy > 0) {
+            player.y = p.y - player.h; player.vy = 0;
+        }
+    });
 
-    // --- SANIC BG ENGINE ---
-    const canvas = document.getElementById('bg');
-    const ctx = canvas.getContext('2d');
-    canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-    let s = { x: 50, y: 50, vx: 4, vy: 4 };
-    function loop() {
-        ctx.fillStyle = "black"; ctx.fillRect(0,0,canvas.width,canvas.height);
-        s.x += s.vx; s.y += s.vy;
-        if(s.x > canvas.width || s.x < 0) s.vx *= -1;
-        if(s.y > canvas.height || s.y < 0) s.vy *= -1;
-        ctx.fillStyle = "#0044ff"; ctx.beginPath(); ctx.arc(s.x, s.y, 20, 0, Math.PI*2); ctx.fill();
-        requestAnimationFrame(loop);
-    }
-    loop();
+    // Bullets
+    bullets.forEach((b, i) => {
+        b.x += b.vx;
+        ctx.fillStyle = b.type === 'plasma' ? 'cyan' : 'yellow';
+        ctx.beginPath(); ctx.arc(b.x - world.cameraX, b.y, 10, 0, Math.PI*2); ctx.fill();
+        
+        // Bullet vs Enemy
+        enemies.forEach(en => {
+            if (!en.dead && Math.abs(b.x - en.x) < 40 && Math.abs(b.y - en.y) < 40) {
+                en.dead = true;
+                b.dead = true;
+                if (en.type === 'fire') { player.power = 'FIRE'; powerUI.innerText = 'FIRE'; }
+                for(let j=0; j<15; j++) particles.push(new Particle(en.x, en.y, 'red'));
+                playSound(100, 'sawtooth', 0.3);
+                world.score += 100;
+            }
+        });
+    });
+
+    // Enemies
+    enemies.forEach(en => {
+        if(!en.dead) {
+            en.update();
+            if (Math.abs(player.x - en.x) < 30 && Math.abs(player.y - en.y) < 30) {
+                player.hp -= 0.5;
+                world.shake = 8;
+            }
+        }
+    });
+
+    // Stars
+    stars.forEach(s => {
+        if(!s.collected) {
+            ctx.fillStyle = 'yellow';
+            ctx.font = '20px serif';
+            ctx.fillText("★", s.x - world.cameraX, s.y + Math.sin(world.frame*0.1)*10);
+            if (Math.abs(player.x - s.x) < 40 && Math.abs(player.y - s.y) < 40) {
+                s.collected = true;
+                world.score++;
+                starCounter.innerText = world.score;
+                playSound(800, 'sine', 0.1);
+            }
+        }
+    });
+
+    // Particles
+    particles.forEach((p, i) => {
+        p.draw();
+        if(p.life <= 0) particles.splice(i, 1);
+    });
+
+    player.update();
+    player.draw();
+
+    // UI Updates
+    hpBar.style.width = player.hp + "%";
+    distCounter.innerText = Math.floor(player.x / 10);
+
+    requestAnimationFrame(loop);
+}
+
+init();
+loop();
 </script>
 </body>
 </html>
