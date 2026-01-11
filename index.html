@@ -3,211 +3,199 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KIRBY: NEON ASCENSION</title>
+    <title>OCR: GLITCH HARVESTER</title>
     <style>
-        body { margin: 0; background: #050505; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
-        canvas { display: block; }
-        #ui {
-            position: absolute; top: 20px; left: 20px; color: #fff;
-            pointer-events: none; z-index: 10;
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;700&display=swap');
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Fira Code', monospace; }
+        canvas { display: block; filter: contrast(1.4) saturate(1.2); }
+        
+        #hud {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; padding: 20px; box-sizing: border-box;
+            display: flex; flex-direction: column; justify-content: space-between;
         }
-        .speed-bar { width: 200px; height: 6px; background: rgba(255,255,255,0.1); margin-top: 10px; border-radius: 3px; overflow: hidden; }
-        #speed-fill { width: 0%; height: 100%; background: cyan; box-shadow: 0 0 10px cyan; transition: width 0.1s; }
-        .multiplier { font-size: 48px; font-weight: 900; font-style: italic; color: #ff00ff; text-shadow: 0 0 20px #ff00ff; }
+        .stats { color: #00ff41; text-shadow: 0 0 10px #00ff41; font-size: 18px; }
+        .lvl-bar { width: 300px; height: 10px; background: rgba(0,255,65,0.1); border: 1px solid #00ff41; margin-top: 5px; }
+        #lvl-fill { width: 0%; height: 100%; background: #00ff41; box-shadow: 0 0 15px #00ff41; }
+        .alert { color: #ff0055; font-size: 40px; font-weight: 900; opacity: 0; transition: 0.2s; }
     </style>
 </head>
 <body>
 
-<div id="ui">
-    <div id="m-text" class="multiplier">x1</div>
-    <div style="letter-spacing: 2px; font-size: 12px; opacity: 0.8;">FLOW STATE VELOCITY</div>
-    <div class="speed-bar"><div id="speed-fill"></div></div>
+<div id="hud">
+    <div class="stats">
+        <div>SECTOR: <span id="sector">1</span></div>
+        <div>BUFFER_STRENGTH: <span id="lvl-text">1</span></div>
+        <div class="lvl-bar"><div id="lvl-fill"></div></div>
+    </div>
+    <div id="alert-box" class="alert">CORE_GLITCH_DETECTED</div>
+    <div class="stats" style="text-align: right;">
+        [SHIFT] HARVEST DATA<br>[SPACE] ASCEND<br>[X] PURGE_BUFFER
+    </div>
 </div>
 <canvas id="game"></canvas>
 
 <script>
 /**
- * VETERAN ENGINE V6: ADDICTIVE FLOW STATE
- * Mechanics: Momentum-preserving dashing, projectile-boosting, and screen-warp.
+ * VETERAN ENGINE V7: THE TESSERACT HARVESTER
+ * Logic: OCR-based Pixel Density Sampling & Evolution
  */
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
-const mText = document.getElementById('m-text');
-const sFill = document.getElementById('speed-fill');
+const lvlFill = document.getElementById('lvl-fill');
+const lvlText = document.getElementById('lvl-text');
+const alertBox = document.getElementById('alert-box');
 
 let w, h;
 const resize = () => { w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight; };
 window.onresize = resize;
 resize();
 
-// --- GAME CONFIG ---
 const state = {
-    score: 0,
-    multiplier: 1,
-    camX: 0,
-    time: 0,
-    particles: [],
-    bullets: [],
-    enemies: [],
-    platforms: [],
-    slowMo: 1
+    time: 0, camX: 0, 
+    score: 0, exp: 0, level: 1,
+    shake: 0, entities: [], particles: [],
+    aberration: 0
 };
 
 const keys = {};
 window.onkeydown = e => keys[e.code] = true;
 window.onkeyup = e => keys[e.code] = false;
 
-// --- PLAYER ---
+// --- HARVESTABLE DATA ENTITIES ---
+class DataNode {
+    constructor(x, y) {
+        this.x = x; this.y = y;
+        this.char = String.fromCharCode(33 + Math.floor(Math.random() * 94));
+        this.weight = Math.random() > 0.8 ? 900 : 300; // OCR weight simulation
+        this.size = 20 + Math.random() * 40;
+        this.collected = false;
+        this.vY = (Math.random() - 0.5) * 2;
+    }
+    draw() {
+        this.y += this.vY;
+        ctx.fillStyle = this.weight > 500 ? '#ff00ff' : '#00ff41';
+        ctx.font = `${this.weight} ${this.size}px 'Fira Code'`;
+        ctx.fillText(this.char, this.x - state.camX, this.y);
+    }
+}
+
 const player = {
-    x: 100, y: 300, vx: 0, vy: 0,
-    w: 36, h: 36,
-    dashCD: 0,
-    isDashing: false,
-    
+    x: 100, y: 300, vX: 0, vY: 0,
+    radius: 30, scanning: false,
     update() {
-        // Friction & Gravity
-        const gravity = 0.5 * state.slowMo;
-        const friction = 0.94;
+        // High-responsivity movement
+        if(keys.ArrowRight) this.vX += 1.8;
+        if(keys.ArrowLeft) this.vX -= 1.8;
+        if(keys.Space) this.vY = -10;
 
-        if(keys.ArrowRight) this.vx += 1.0;
-        if(keys.ArrowLeft) this.vx -= 1.0;
+        this.vX *= 0.88;
+        this.vY += 0.6;
+        this.x += this.vX;
+        this.y += this.vY;
+
+        if(this.y > h - 100) { this.y = h - 100; this.vY = 0; }
         
-        // Jump / Fly
-        if(keys.Space) this.vy -= 0.8 * state.slowMo;
-
-        // DASH MECHANIC (Shift) - High-speed addiction
-        if(keys.ShiftLeft && this.dashCD <= 0) {
-            this.vx = (keys.ArrowLeft ? -25 : 25);
-            this.vy = -2;
-            this.dashCD = 30;
-            this.isDashing = true;
-            state.shake = 15;
-            spawnBurst(this.x, this.y, 'cyan', 20);
+        this.scanning = keys.ShiftLeft || keys.ShiftRight;
+        if(this.scanning) this.performOCR();
+        
+        // Progression
+        if(state.exp >= 100) {
+            state.level++;
+            state.exp = 0;
+            state.shake = 30;
+            lvlText.innerText = state.level;
+            this.radius += 5;
+            spawnBurst(this.x, this.y, '#fff', 30);
         }
-        if(this.dashCD > 0) this.dashCD--;
-        if(Math.abs(this.vx) < 10) this.isDashing = false;
+        lvlFill.style.width = state.exp + "%";
+    },
 
-        this.vx *= friction;
-        this.vy += gravity;
-        this.x += this.vx * state.slowMo;
-        this.y += this.vy * state.slowMo;
-
-        // Screen Boundaries & Platforms
-        if(this.y > h - 100) { this.y = h - 100; this.vy = 0; }
+    performOCR() {
+        const scanWidth = 150 + (state.level * 10);
+        const scanHeight = 150 + (state.level * 10);
         
-        state.platforms.forEach(p => {
-            if(this.x + this.w > p.x && this.x < p.x + p.w && this.y + this.h > p.y && this.y + this.h < p.y + p.h + 15 && this.vy > 0) {
-                this.y = p.y - this.h; this.vy = 0;
+        // Scan visualization
+        ctx.strokeStyle = `rgba(0, 255, 65, ${0.2 + Math.sin(state.time * 0.2) * 0.1})`;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(this.x - state.camX + 50, this.y - 75, scanWidth, scanHeight);
+
+        state.entities.forEach(node => {
+            if(!node.collected && 
+               node.x > this.x + 50 && node.x < this.x + 50 + scanWidth &&
+               node.y > this.y - 75 && node.y < this.y - 75 + scanHeight) {
+                
+                node.collected = true;
+                state.exp += node.weight > 500 ? 15 : 5;
+                state.score += node.weight;
+                state.shake = 5;
+                spawnBurst(node.x, node.y, node.weight > 500 ? '#ff00ff' : '#00ff41', 10);
             }
         });
-
-        // Flow State Logic
-        let speed = Math.abs(this.vx);
-        state.multiplier = 1 + Math.floor(speed / 8);
-        mText.innerText = `x${state.multiplier}`;
-        sFill.style.width = Math.min(100, (speed / 20) * 100) + "%";
-        sFill.style.background = state.multiplier > 2 ? '#ff00ff' : 'cyan';
     },
 
     draw() {
         ctx.save();
-        ctx.translate(this.x - state.camX + 18, this.y + 18);
+        ctx.translate(this.x - state.camX, this.y);
         
-        // Trail effect when fast
-        if(Math.abs(this.vx) > 10) {
-            ctx.globalAlpha = 0.3;
-            ctx.fillStyle = '#ff00ff';
-            ctx.fillRect(-25 * Math.sign(this.vx), -15, 40, 30);
-        }
-
-        ctx.globalAlpha = 1;
-        ctx.fillStyle = '#ffb6c1';
+        // Kirby-OS Core
+        const grad = ctx.createRadialGradient(0,0,5, 0,0,this.radius);
+        grad.addColorStop(0, '#fff');
+        grad.addColorStop(1, this.scanning ? '#00ff41' : '#ffb6c1');
+        
+        ctx.fillStyle = grad;
         ctx.beginPath();
-        ctx.arc(0, 0, 18, 0, Math.PI*2);
+        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
         ctx.fill();
         
-        // Glowing Eyes
-        ctx.fillStyle = '#fff';
-        ctx.shadowBlur = 10; ctx.shadowColor = 'cyan';
-        ctx.fillRect(4, -8, 4, 10);
-        ctx.fillRect(12, -8, 4, 10);
+        // Digital Face
+        ctx.fillStyle = '#000';
+        ctx.fillRect(5, -10, 4, 15);
+        ctx.fillRect(15, -10, 4, 15);
         ctx.restore();
     }
 };
 
-// --- HELPERS ---
 function spawnBurst(x, y, color, count) {
     for(let i=0; i<count; i++) {
         state.particles.push({
-            x, y, 
-            vx: (Math.random()-0.5)*15, 
-            vy: (Math.random()-0.5)*15, 
-            life: 1, 
-            color
+            x, y, vX: (Math.random()-0.5)*20, vY: (Math.random()-0.5)*20,
+            color, life: 1
         });
     }
 }
 
-// --- WORLD GEN ---
-for(let i=0; i<100; i++) {
-    state.platforms.push({ x: i*400, y: h - 150 - Math.random()*300, w: 250, h: 15 });
-    state.enemies.push({ x: i*400 + 200, y: h - 400, w: 40, h: 40, alive: true });
+// --- INITIALIZE WORLD ---
+function spawnCluster(startX) {
+    for(let i=0; i<15; i++) {
+        state.entities.push(new DataNode(startX + Math.random() * 800, 100 + Math.random() * (h - 300)));
+    }
 }
+spawnCluster(400);
 
-// --- LOOP ---
+// --- MAIN LOOP ---
 function loop() {
     state.time++;
-    ctx.fillStyle = '#050505';
-    ctx.fillRect(0,0,w,h);
+    
+    // Clear & Chromatic Aberration Simulation
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(0, 0, w, h);
 
-    // Dynamic Camera
-    state.camX += (player.x - w/4 - state.camX) * 0.1;
+    state.camX += (player.x - w/3 - state.camX) * 0.1;
 
-    // Background Grid (Moving with camera)
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-    ctx.beginPath();
-    for(let x=0; x<w; x+=50) {
-        let offX = x - (state.camX % 50);
-        ctx.moveTo(offX, 0); ctx.lineTo(offX, h);
+    if(state.shake > 0) {
+        ctx.translate((Math.random()-0.5)*state.shake, (Math.random()-0.5)*state.shake);
+        state.shake *= 0.9;
     }
-    ctx.stroke();
 
-    // Platforms
-    ctx.fillStyle = '#1a1a1a';
-    state.platforms.forEach(p => {
-        ctx.fillRect(p.x - state.camX, p.y, p.w, p.h);
-        ctx.fillStyle = 'cyan';
-        ctx.fillRect(p.x - state.camX, p.y, p.w, 2); // Neon top
-        ctx.fillStyle = '#1a1a1a';
-    });
+    // World Rendering
+    state.entities = state.entities.filter(e => !e.collected);
+    state.entities.forEach(e => e.draw());
 
-    // Enemies
-    state.enemies.forEach(e => {
-        if(e.alive) {
-            ctx.fillStyle = '#ff0055';
-            ctx.shadowBlur = 15; ctx.shadowColor = '#ff0055';
-            ctx.fillRect(e.x - state.camX, e.y, e.w, e.h);
-            ctx.shadowBlur = 0;
-
-            // Collision with player
-            if(Math.abs(player.x - e.x) < 40 && Math.abs(player.y - e.y) < 40) {
-                if(player.isDashing) {
-                    e.alive = false;
-                    spawnBurst(e.x, e.y, '#ff0055', 15);
-                    state.score += 500 * state.multiplier;
-                    player.vy = -10; // Bounce
-                } else {
-                    player.vx = -10; // Hurt
-                }
-            }
-        }
-    });
-
-    // Particles
     state.particles.forEach((p, i) => {
-        p.x += p.vx; p.y += p.vy; p.life -= 0.02;
-        ctx.globalAlpha = p.life;
+        p.x += p.vX; p.y += p.vY; p.life -= 0.03;
         ctx.fillStyle = p.color;
+        ctx.globalAlpha = p.life;
         ctx.fillRect(p.x - state.camX, p.y, 4, 4);
         if(p.life <= 0) state.particles.splice(i, 1);
     });
@@ -215,6 +203,16 @@ function loop() {
 
     player.update();
     player.draw();
+
+    // Infinity Spawner
+    if(state.entities.length < 20) spawnCluster(player.x + w);
+
+    // Brainrot Difficulty Spike
+    if(state.level % 5 === 0) {
+        alertBox.style.opacity = Math.sin(state.time * 0.5);
+    } else {
+        alertBox.style.opacity = 0;
+    }
 
     requestAnimationFrame(loop);
 }
