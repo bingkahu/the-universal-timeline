@@ -1,2029 +1,407 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!--
-    Neon Drift: Echo Runner — Single-file index.html (Part 1/5)
-    Core playable build with:
-      - Title screen, instructions, responsive controls (keyboard + touch)
-      - Web Audio API (music + SFX)
-      - Save/load via localStorage (progress, settings, cosmetics)
-      - Visual polish: gradients, glassmorphism UI, keyframe animations, screen shake
-      - Easter eggs: Konami code, hidden dev console, rare spawns, secret palette
-      - Optimized for GitHub Pages (no external dependencies)
-    Escalation Plan:
-      Part 2: Bosses, achievements, cosmetics shop, dynamic events, soundtrack remixes
-      Part 3: Challenge modes, daily seeds, social share hooks, ghost replays
-      Part 4: Legendary artifacts: lore codex, unlock trees, badges, wiki-ready logs
-      Part 5: Padding + creative expansions to exceed 10,000 lines (comment art, dev notes, remix hooks)
-  -->
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-  <title>Neon Drift: Echo Runner</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pixel Dodger</title>
   <style>
-    /* =========================
-       Global Reset & Variables
-       ========================= */
-    :root{
-      --bg-0: #0a0f1f;
-      --bg-1: #0d1228;
-      --bg-2: #111633;
-      --glass: rgba(255,255,255,0.08);
-      --glass-strong: rgba(255,255,255,0.16);
-      --accent-1: #7df9ff;   /* electric cyan */
-      --accent-2: #ff3cac;   /* neon magenta */
-      --accent-3: #ffd166;   /* warm gold */
-      --accent-4: #6a00f4;   /* deep violet */
-      --good: #3ef37b;
-      --warn: #ffd166;
-      --bad: #ff5e5e;
-      --text: #eaf2ff;
-      --muted: #a9b6d3;
-      --shadow: rgba(0,0,0,0.35);
-      --blur: 18px;
-      --radius: 16px;
-      --radius-sm: 10px;
-      --radius-lg: 24px;
-      --border: 1px solid rgba(255,255,255,0.12);
-      --grid: rgba(125,249,255,0.08);
-      --grid-strong: rgba(125,249,255,0.18);
-      --shake-strength: 10px;
-    }
-    *{box-sizing:border-box}
-    html,body{
-      margin:0; padding:0; height:100%; width:100%;
-      background: radial-gradient(1200px 800px at 50% 50%, var(--bg-2), var(--bg-1), var(--bg-0));
-      color: var(--text);
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
-      overflow:hidden;
+    :root {
+      --bg: #0f1226;
+      --panel: #1b1f3b;
+      --accent: #6cf1ff;
+      --danger: #ff4d6d;
+      --safe: #7cff7c;
+      --text: #e9ecff;
     }
 
-    /* =========================
-       Layout Containers
-       ========================= */
-    #app{
-      position:relative; height:100%; width:100%;
-      display:grid; grid-template-rows: 1fr auto;
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(1200px at 50% 20%, #14173a, var(--bg));
+      color: var(--text);
+      display: grid;
+      place-items: center;
+      min-height: 100vh;
     }
-    canvas#game{
-      position:absolute; inset:0; width:100%; height:100%;
+
+    .wrap {
+      width: 900px;
+      max-width: 92vw;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .brand {
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .hud {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      background: linear-gradient(180deg, #22264d, var(--panel));
+      border: 1px solid #2b3163;
+      border-radius: 10px;
+      padding: 8px 12px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+    }
+
+    .hud .pill {
+      background: #0f1433;
+      border: 1px solid #2b3163;
+      padding: 6px 10px;
+      border-radius: 8px;
+      min-width: 90px;
+      text-align: center;
+    }
+
+    .btn {
+      background: var(--accent);
+      color: #041018;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.08s ease, filter 0.2s ease;
+    }
+    .btn:hover { filter: brightness(1.05); }
+    .btn:active { transform: scale(0.98); }
+
+    /* Game area */
+    #game {
+      position: relative;
+      width: 900px;
+      max-width: 92vw;
+      height: 520px;
+      border-radius: 14px;
+      overflow: hidden;
       background:
-        radial-gradient(1200px 800px at 50% 50%, rgba(106,0,244,0.15), rgba(13,18,40,0.6)),
-        linear-gradient(180deg, rgba(10,15,31,0.9), rgba(10,15,31,1));
-    }
-    .hud{
-      position:relative; z-index:10; pointer-events:none;
-      display:flex; align-items:flex-start; justify-content:space-between;
-      padding:20px;
-    }
-    .panel{
-      pointer-events:auto;
-      backdrop-filter: blur(var(--blur));
-      background: linear-gradient(180deg, var(--glass), transparent);
-      border: var(--border);
-      border-radius: var(--radius);
-      box-shadow: 0 10px 30px var(--shadow);
-      padding:14px 16px;
-    }
-    .panel.glass-strong{
-      background: linear-gradient(180deg, var(--glass-strong), transparent);
-    }
-    .row{display:flex; gap:12px; align-items:center}
-    .col{display:flex; flex-direction:column; gap:8px}
-
-    /* =========================
-       Title Screen & Menus
-       ========================= */
-    .screen{
-      position:absolute; inset:0; display:flex; flex-direction:column;
-      align-items:center; justify-content:center; gap:18px; z-index:20;
-      background: linear-gradient(180deg, rgba(10,15,31,0.6), rgba(10,15,31,0.85));
-      opacity:0; pointer-events:none; transition: opacity .35s ease;
-    }
-    .screen.active{opacity:1; pointer-events:auto}
-    .title{
-      font-size: clamp(28px, 5vw, 64px);
-      letter-spacing: 1px;
-      text-shadow: 0 6px 24px rgba(125,249,255,0.35), 0 2px 8px rgba(255,60,172,0.25);
-      background: linear-gradient(90deg, var(--accent-1), var(--accent-2), var(--accent-3));
-      -webkit-background-clip: text; background-clip: text; color: transparent;
-      animation: glowPulse 3s ease-in-out infinite;
-    }
-    .subtitle{
-      color: var(--muted);
-      font-size: clamp(14px, 2.2vw, 20px);
-    }
-    .menu{
-      display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:center;
-    }
-    .btn{
-      pointer-events:auto; cursor:pointer; user-select:none;
-      padding:12px 16px; border-radius: var(--radius-sm);
-      border: var(--border);
-      backdrop-filter: blur(var(--blur));
-      background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
-      color: var(--text);
-      transition: transform .12s ease, box-shadow .2s ease, background .2s ease;
-      box-shadow: 0 6px 18px rgba(125,249,255,0.18);
-    }
-    .btn:hover{transform: translateY(-2px); box-shadow: 0 10px 24px rgba(125,249,255,0.28)}
-    .btn.primary{
-      background: linear-gradient(180deg, rgba(125,249,255,0.18), rgba(255,60,172,0.12));
-      border-color: rgba(125,249,255,0.25);
-    }
-    .btn.warn{border-color: rgba(255,209,102,0.35)}
-    .btn.bad{border-color: rgba(255,94,94,0.35)}
-    .small{font-size:12px; color:var(--muted)}
-
-    /* =========================
-       Keyframe Animations
-       ========================= */
-    @keyframes glowPulse{
-      0%{filter: drop-shadow(0 0 0 rgba(125,249,255,0.0))}
-      50%{filter: drop-shadow(0 0 18px rgba(125,249,255,0.45))}
-      100%{filter: drop-shadow(0 0 0 rgba(125,249,255,0.0))}
-    }
-    @keyframes shake{
-      0%{transform: translate(0,0)}
-      20%{transform: translate(var(--shake-strength), -2px)}
-      40%{transform: translate(-6px, 2px)}
-      60%{transform: translate(4px, -var(--shake-strength))}
-      80%{transform: translate(-var(--shake-strength), 4px)}
-      100%{transform: translate(0,0)}
-    }
-    @keyframes pop{
-      0%{transform: scale(0.8); opacity:0}
-      60%{transform: scale(1.05); opacity:1}
-      100%{transform: scale(1)}
+        radial-gradient(800px at 20% 10%, #1a1f47 0%, #0f1226 60%),
+        repeating-linear-gradient(180deg, rgba(255,255,255,0.04) 0 2px, transparent 2px 6px);
+      border: 1px solid #2b3163;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.45);
     }
 
-    /* =========================
-       HUD Elements
-       ========================= */
-    .hud-left, .hud-right{
-      display:flex; flex-direction:column; gap:10px;
-    }
-    .meter{
-      display:flex; align-items:center; gap:8px;
-    }
-    .bar{
-      width:220px; height:10px; border-radius: 999px; overflow:hidden;
-      background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
-      border: var(--border);
-    }
-    .bar > .fill{
-      height:100%; width:50%;
-      background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
-      box-shadow: 0 0 12px rgba(125,249,255,0.35);
-      transition: width .2s ease;
-    }
-    .score{
-      font-weight:600; letter-spacing:.5px;
-      background: linear-gradient(90deg, var(--accent-1), var(--accent-3));
-      -webkit-background-clip:text; background-clip:text; color:transparent;
-    }
-    .combo{
-      color: var(--accent-2); font-weight:700;
-      text-shadow: 0 0 12px rgba(255,60,172,0.35);
-    }
-    .toast{
-      position:absolute; left:50%; transform:translateX(-50%);
-      bottom:20px; z-index:30;
-      display:flex; flex-direction:column; gap:8px; align-items:center;
-    }
-    .toast .msg{
-      animation: pop .25s ease;
-      padding:10px 14px; border-radius: var(--radius-sm);
-      border: var(--border);
-      backdrop-filter: blur(var(--blur));
-      background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
-      box-shadow: 0 6px 18px rgba(125,249,255,0.18);
-      font-size:14px;
+    /* Player */
+    .player {
+      position: absolute;
+      width: 36px;
+      height: 36px;
+      border-radius: 6px;
+      background: linear-gradient(135deg, var(--accent), #3bd6ff);
+      box-shadow: 0 0 18px rgba(108,241,255,0.6);
+      outline: 2px solid rgba(108,241,255,0.35);
     }
 
-    /* =========================
-       Debug / Dev Console (Hidden)
-       ========================= */
-    .dev-console{
-      position:absolute; right:20px; bottom:20px; z-index:40;
-      width:320px; max-height:40vh; overflow:auto;
-      display:none; /* toggled by secret */
-    }
-    .dev-console.active{display:block}
-    .dev-console pre{
-      margin:0; padding:10px; white-space:pre-wrap;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      font-size:12px; color: var(--muted);
+    /* Obstacles */
+    .ob {
+      position: absolute;
+      width: 34px;
+      height: 34px;
+      border-radius: 6px;
+      background: linear-gradient(135deg, #ff6b8a, var(--danger));
+      box-shadow: 0 0 16px rgba(255,77,109,0.5);
+      outline: 2px solid rgba(255,77,109,0.35);
     }
 
-    /* =========================
-       Touch Controls (Mobile)
-       ========================= */
-    .touch{
-      position:absolute; inset:0; z-index:25; pointer-events:none;
-      display:flex; align-items:flex-end; justify-content:space-between; padding:20px;
-    }
-    .touch .pad{
-      pointer-events:auto; width:120px; height:120px; border-radius:50%;
-      border: var(--border);
-      backdrop-filter: blur(var(--blur));
-      background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
-      box-shadow: 0 6px 18px rgba(125,249,255,0.18);
-      display:flex; align-items:center; justify-content:center;
-      color: var(--muted); font-size:12px; user-select:none;
+    /* Collectibles */
+    .gem {
+      position: absolute;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #fff 0%, #baffc1 20%, var(--safe) 60%);
+      box-shadow: 0 0 14px rgba(124,255,124,0.6);
+      outline: 2px solid rgba(124,255,124,0.35);
     }
 
-    /* =========================
-       Easter Egg Palettes
-       ========================= */
-    .palette-preview{
-      display:flex; gap:8px; align-items:center;
+    /* Overlay */
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      background: rgba(10, 12, 26, 0.6);
+      backdrop-filter: blur(2px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
     }
-    .swatch{
-      width:18px; height:18px; border-radius:4px; border: var(--border);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    .overlay.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .panel {
+      background: linear-gradient(180deg, #22264d, var(--panel));
+      border: 1px solid #2b3163;
+      border-radius: 12px;
+      padding: 18px;
+      width: 420px;
+      max-width: 86vw;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+    .panel h2 { margin: 0 0 8px; }
+    .panel p { margin: 6px 0 14px; color: #cfd6ff; }
+    .panel .kbd {
+      display: inline-block;
+      border: 1px solid #2b3163;
+      border-radius: 6px;
+      padding: 2px 6px;
+      margin: 0 2px;
+      background: #0f1433;
+      color: #cfd6ff;
+      font-weight: 700;
     }
 
-    /* =========================
-       Grid Overlay (subtle)
-       ========================= */
-    .grid-overlay{
-      position:absolute; inset:0; z-index:1; pointer-events:none;
-      background-image:
-        linear-gradient(var(--grid) 1px, transparent 1px),
-        linear-gradient(90deg, var(--grid) 1px, transparent 1px);
-      background-size: 40px 40px, 40px 40px;
-      mix-blend-mode: screen;
-    }
-
-    /* =========================
-       Screen Shake Hook
-       ========================= */
-    .shake{
-      animation: shake .25s ease;
+    footer {
+      margin-top: 10px;
+      font-size: 12px;
+      color: #9aa3d9;
+      text-align: center;
     }
   </style>
 </head>
 <body>
-  <div id="app">
-    <canvas id="game"></canvas>
-    <div class="grid-overlay"></div>
+  <div class="wrap">
+    <header>
+      <div class="brand">🎮 Pixel Dodger</div>
+      <div class="hud">
+        <div class="pill"><strong>Score:</strong> <span id="score">0</span></div>
+        <div class="pill"><strong>Best:</strong> <span id="best">0</span></div>
+        <div class="pill"><strong>Level:</strong> <span id="level">1</span></div>
+        <button id="startBtn" class="btn">Start</button>
+      </div>
+    </header>
 
-    <!-- HUD -->
-    <div class="hud">
-      <div class="hud-left">
-        <div class="panel glass-strong">
-          <div class="row">
-            <div class="score" id="scoreLabel">Score: 0</div>
-            <div class="combo" id="comboLabel">x1</div>
-          </div>
-          <div class="meter">
-            <div class="small">Energy</div>
-            <div class="bar"><div class="fill" id="energyFill" style="width:50%"></div></div>
-          </div>
-          <div class="meter">
-            <div class="small">Shield</div>
-            <div class="bar"><div class="fill" id="shieldFill" style="width:50%"></div></div>
-          </div>
-        </div>
+    <div id="game">
+      <div id="player" class="player"></div>
+
+      <div id="overlay" class="overlay show">
         <div class="panel">
-          <div class="small">Seed: <span id="seedLabel">—</span></div>
-          <div class="small">Best: <span id="bestLabel">0</span></div>
-        </div>
-      </div>
-      <div class="hud-right">
-        <div class="panel">
-          <div class="row">
-            <div class="small">Palette</div>
-            <div class="palette-preview" id="palettePreview">
-              <div class="swatch" style="background:#7df9ff"></div>
-              <div class="swatch" style="background:#ff3cac"></div>
-              <div class="swatch" style="background:#ffd166"></div>
-              <div class="swatch" style="background:#6a00f4"></div>
-            </div>
-          </div>
-          <div class="row">
-            <button class="btn" id="btnSave">Save</button>
-            <button class="btn" id="btnLoad">Load</button>
-            <button class="btn warn" id="btnReset">Reset</button>
-          </div>
+          <h2>Welcome to Pixel Dodger</h2>
+          <p>Move with <span class="kbd">←</span> <span class="kbd">→</span> and dodge red blocks. Collect green orbs for bonus points.</p>
+          <p>Survive as long as you can—speed increases every level.</p>
+          <button id="playBtn" class="btn">Play</button>
         </div>
       </div>
     </div>
 
-    <!-- Title Screen -->
-    <div class="screen active" id="screenTitle">
-      <div class="title">Neon Drift: Echo Runner</div>
-      <div class="subtitle">Dodge, drift, and chain echoes—then break the grid.</div>
-      <div class="panel glass-strong" style="max-width:720px">
-        <div class="col">
-          <div class="small">Controls</div>
-          <ul style="margin:0; padding-left:18px; color:var(--muted)">
-            <li>Move: Arrow Keys or WASD</li>
-            <li>Dash: Shift or Space</li>
-            <li>Pause: P</li>
-            <li>Touch: Drag left pad to move, tap right pad to dash</li>
-          </ul>
-          <div class="small">Goal</div>
-          <div class="small">Chain near-misses to build combo, collect shards to charge dash, and survive waves. Hidden events unlock secret palettes.</div>
-        </div>
-      </div>
-      <div class="menu">
-        <button class="btn primary" id="btnPlay">Play</button>
-        <button class="btn" id="btnHow">How to Play</button>
-        <button class="btn" id="btnSettings">Settings</button>
-      </div>
-      <div class="small">v1.0 — Single-file build for GitHub Pages</div>
-    </div>
-
-    <!-- How Screen -->
-    <div class="screen" id="screenHow">
-      <div class="title">How to Play</div>
-      <div class="panel glass-strong" style="max-width:720px">
-        <div class="col">
-          <div class="small">Mechanics</div>
-          <ul style="margin:0; padding-left:18px; color:var(--muted)">
-            <li>Near-miss enemies to gain combo and energy.</li>
-            <li>Dash through shards to refill shield and score big.</li>
-            <li>Echo trails amplify your dash—chain them for multipliers.</li>
-            <li>Rare spawns appear at high combo—watch for color shifts.</li>
-          </ul>
-          <div class="small">Tips</div>
-          <ul style="margin:0; padding-left:18px; color:var(--muted)">
-            <li>Stay near the center to read patterns.</li>
-            <li>Use dash to reposition, not just escape.</li>
-            <li>If the grid flickers purple, a secret event is near.</li>
-          </ul>
-        </div>
-      </div>
-      <div class="menu">
-        <button class="btn primary" id="btnBackTitle1">Back</button>
-      </div>
-    </div>
-
-    <!-- Settings Screen -->
-    <div class="screen" id="screenSettings">
-      <div class="title">Settings</div>
-      <div class="panel glass-strong" style="max-width:720px">
-        <div class="col">
-          <div class="row">
-            <div class="small">Music</div>
-            <button class="btn" id="btnMusic">Toggle</button>
-          </div>
-          <div class="row">
-            <div class="small">SFX</div>
-            <button class="btn" id="btnSfx">Toggle</button>
-          </div>
-          <div class="row">
-            <div class="small">Difficulty</div>
-            <button class="btn" id="btnDiff">Normal</button>
-          </div>
-          <div class="row">
-            <div class="small">Palette</div>
-            <button class="btn" id="btnPalette">Cycle</button>
-          </div>
-        </div>
-      </div>
-      <div class="menu">
-        <button class="btn primary" id="btnBackTitle2">Back</button>
-      </div>
-    </div>
-
-    <!-- Pause Screen -->
-    <div class="screen" id="screenPause">
-      <div class="title">Paused</div>
-      <div class="menu">
-        <button class="btn primary" id="btnResume">Resume</button>
-        <button class="btn" id="btnRestart">Restart</button>
-        <button class="btn" id="btnQuit">Quit</button>
-      </div>
-    </div>
-
-    <!-- Game Over Screen -->
-    <div class="screen" id="screenOver">
-      <div class="title">Game Over</div>
-      <div class="panel glass-strong">
-        <div class="row">
-          <div class="small">Score</div>
-          <div class="score" id="finalScore">0</div>
-        </div>
-        <div class="row">
-          <div class="small">Best</div>
-          <div class="score" id="finalBest">0</div>
-        </div>
-      </div>
-      <div class="menu">
-        <button class="btn primary" id="btnPlayAgain">Play Again</button>
-        <button class="btn" id="btnBackTitle3">Title</button>
-      </div>
-    </div>
-
-    <!-- Toasts -->
-    <div class="toast" id="toast"></div>
-
-    <!-- Dev Console (hidden by secret) -->
-    <div class="dev-console panel" id="devConsole">
-      <pre id="devLog"></pre>
-    </div>
-
-    <!-- Touch Controls -->
-    <div class="touch" id="touch">
-      <div class="pad" id="padMove">Move</div>
-      <div class="pad" id="padDash">Dash</div>
-    </div>
+    <footer>Built with HTML, CSS, and vanilla JS—single file, instantly deployable.</footer>
   </div>
 
   <script>
-    /* ============================================================
-       Neon Drift: Echo Runner — Core Game Script (Part 1/5)
-       ============================================================ */
+    // --- Game config ---
+    const gameEl = document.getElementById('game');
+    const playerEl = document.getElementById('player');
+    const overlayEl = document.getElementById('overlay');
+    const scoreEl = document.getElementById('score');
+    const bestEl = document.getElementById('best');
+    const levelEl = document.getElementById('level');
+    const startBtn = document.getElementById('startBtn');
+    const playBtn = document.getElementById('playBtn');
 
-    // -----------------------------
-    // Utilities
-    // -----------------------------
-    const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
-    const lerp = (a, b, t) => a + (b - a) * t;
-    const rand = (min, max) => Math.random() * (max - min) + min;
-    const randInt = (min, max) => Math.floor(rand(min, max + 1));
-    const now = () => performance.now();
-
-    // Seeded RNG for repeatable runs
-    function makeRNG(seedStr){
-      let h = 2166136261 >>> 0;
-      for(let i=0;i<seedStr.length;i++){
-        h ^= seedStr.charCodeAt(i);
-        h = Math.imul(h, 16777619);
-      }
-      let s = h >>> 0;
-      return function(){
-        s += 0x6D2B79F5;
-        let t = Math.imul(s ^ (s >>> 15), 1 | s);
-        t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
-        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-      };
-    }
-
-    // -----------------------------
-    // DOM & Canvas
-    // -----------------------------
-    const canvas = document.getElementById('game');
-    const ctx = canvas.getContext('2d');
-    const app = document.getElementById('app');
-
-    const screenTitle = document.getElementById('screenTitle');
-    const screenHow = document.getElementById('screenHow');
-    const screenSettings = document.getElementById('screenSettings');
-    const screenPause = document.getElementById('screenPause');
-    const screenOver = document.getElementById('screenOver');
-
-    const btnPlay = document.getElementById('btnPlay');
-    const btnHow = document.getElementById('btnHow');
-    const btnSettings = document.getElementById('btnSettings');
-    const btnBackTitle1 = document.getElementById('btnBackTitle1');
-    const btnBackTitle2 = document.getElementById('btnBackTitle2');
-    const btnResume = document.getElementById('btnResume');
-    const btnRestart = document.getElementById('btnRestart');
-    const btnQuit = document.getElementById('btnQuit');
-    const btnPlayAgain = document.getElementById('btnPlayAgain');
-    const btnBackTitle3 = document.getElementById('btnBackTitle3');
-
-    const btnSave = document.getElementById('btnSave');
-    const btnLoad = document.getElementById('btnLoad');
-    const btnReset = document.getElementById('btnReset');
-
-    const btnMusic = document.getElementById('btnMusic');
-    const btnSfx = document.getElementById('btnSfx');
-    const btnDiff = document.getElementById('btnDiff');
-    const btnPalette = document.getElementById('btnPalette');
-
-    const scoreLabel = document.getElementById('scoreLabel');
-    const comboLabel = document.getElementById('comboLabel');
-    const energyFill = document.getElementById('energyFill');
-    const shieldFill = document.getElementById('shieldFill');
-    const seedLabel = document.getElementById('seedLabel');
-    const bestLabel = document.getElementById('bestLabel');
-    const finalScore = document.getElementById('finalScore');
-    const finalBest = document.getElementById('finalBest');
-
-    const toast = document.getElementById('toast');
-    const devConsole = document.getElementById('devConsole');
-    const devLog = document.getElementById('devLog');
-
-    const padMove = document.getElementById('padMove');
-    const padDash = document.getElementById('padDash');
-
-    // -----------------------------
-    // Resize
-    // -----------------------------
-    function resize(){
-      const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-      canvas.width = Math.floor(canvas.clientWidth * dpr);
-      canvas.height = Math.floor(canvas.clientHeight * dpr);
-      ctx.setTransform(dpr,0,0,dpr,0,0);
-    }
-    window.addEventListener('resize', resize);
-    resize();
-
-    // -----------------------------
-    // Audio (Web Audio API)
-    // -----------------------------
-    const AudioSys = (() => {
-      const state = {
-        enabledMusic: true,
-        enabledSfx: true,
-        ctx: null,
-        musicGain: null,
-        sfxGain: null,
-        musicNode: null,
-        started: false,
-      };
-
-      function init(){
-        if(state.ctx) return;
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const master = ctx.createGain();
-        master.gain.value = 0.9;
-        master.connect(ctx.destination);
-
-        const musicGain = ctx.createGain();
-        musicGain.gain.value = 0.25;
-        musicGain.connect(master);
-
-        const sfxGain = ctx.createGain();
-        sfxGain.gain.value = 0.9;
-        sfxGain.connect(master);
-
-        state.ctx = ctx;
-        state.musicGain = musicGain;
-        state.sfxGain = sfxGain;
-      }
-
-      function resume(){
-        if(!state.ctx) return;
-        if(state.ctx.state === 'suspended') state.ctx.resume();
-      }
-
-      function startMusic(){
-        if(!state.enabledMusic || state.musicNode) return;
-        init(); resume();
-        const ctx = state.ctx;
-
-        // Simple generative loop: layered tones + low beat
-        const base = ctx.createOscillator();
-        base.type = 'sawtooth';
-        base.frequency.value = 110; // A2
-        const baseGain = ctx.createGain();
-        baseGain.gain.value = 0.02;
-        base.connect(baseGain).connect(state.musicGain);
-        base.start();
-
-        const pad = ctx.createOscillator();
-        pad.type = 'triangle';
-        pad.frequency.value = 220; // A3
-        const padGain = ctx.createGain();
-        padGain.gain.value = 0.015;
-        pad.connect(padGain).connect(state.musicGain);
-        pad.start();
-
-        // Beat via noise burst
-        const beatGain = ctx.createGain();
-        beatGain.gain.value = 0.0;
-        beatGain.connect(state.musicGain);
-
-        function scheduleBeat(){
-          const bufferSize = 2 * ctx.sampleRate;
-          const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-          const data = buffer.getChannelData(0);
-          for(let i=0;i<bufferSize;i++){
-            data[i] = (Math.random()*2-1) * Math.exp(-i/ (ctx.sampleRate*0.03));
-          }
-          const src = ctx.createBufferSource();
-          src.buffer = buffer;
-          src.connect(beatGain);
-          beatGain.gain.cancelScheduledValues(ctx.currentTime);
-          beatGain.gain.setValueAtTime(0.0, ctx.currentTime);
-          beatGain.gain.linearRampToValueAtTime(0.08, ctx.currentTime + 0.02);
-          beatGain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.25);
-          src.start();
-        }
-
-        const lfo = ctx.createOscillator();
-        lfo.type = 'sine';
-        lfo.frequency.value = 0.08;
-        const lfoGain = ctx.createGain();
-        lfoGain.gain.value = 20;
-        lfo.connect(lfoGain);
-        lfoGain.connect(base.frequency);
-        lfoGain.connect(pad.frequency);
-        lfo.start();
-
-        // Beat loop
-        const beatInterval = setInterval(() => {
-          if(!state.enabledMusic){ clearInterval(beatInterval); return; }
-          scheduleBeat();
-        }, 600);
-
-        state.musicNode = { base, pad, beatInterval, beatGain, lfo, lfoGain };
-        state.started = true;
-      }
-
-      function stopMusic(){
-        if(!state.musicNode) return;
-        const { base, pad, beatInterval, beatGain, lfo } = state.musicNode;
-        clearInterval(beatInterval);
-        try{ base.stop(); pad.stop(); lfo.stop(); }catch(e){}
-        state.musicNode = null;
-      }
-
-      function sfx(type){
-        if(!state.enabledSfx) return;
-        init(); resume();
-        const ctx = state.ctx;
-
-        if(type === 'dash'){
-          const o = ctx.createOscillator();
-          o.type = 'square';
-          o.frequency.value = 440;
-          const g = ctx.createGain();
-          g.gain.value = 0.0;
-          o.connect(g).connect(state.sfxGain);
-          o.start();
-          g.gain.linearRampToValueAtTime(0.6, ctx.currentTime + 0.02);
-          o.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.12);
-          g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.22);
-          o.stop(ctx.currentTime + 0.24);
-        } else if(type === 'hit'){
-          const o = ctx.createOscillator();
-          o.type = 'sawtooth';
-          o.frequency.value = 220;
-          const g = ctx.createGain();
-          g.gain.value = 0.0;
-          o.connect(g).connect(state.sfxGain);
-          o.start();
-          g.gain.linearRampToValueAtTime(0.7, ctx.currentTime + 0.02);
-          o.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.18);
-          g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.28);
-          o.stop(ctx.currentTime + 0.3);
-        } else if(type === 'shard'){
-          const o = ctx.createOscillator();
-          o.type = 'triangle';
-          o.frequency.value = 660;
-          const g = ctx.createGain();
-          g.gain.value = 0.0;
-          o.connect(g).connect(state.sfxGain);
-          o.start();
-          g.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.02);
-          o.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.12);
-          g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.22);
-          o.stop(ctx.currentTime + 0.24);
-        } else if(type === 'combo'){
-          const o = ctx.createOscillator();
-          o.type = 'sine';
-          o.frequency.value = 440;
-          const g = ctx.createGain();
-          g.gain.value = 0.0;
-          o.connect(g).connect(state.sfxGain);
-          o.start();
-          g.gain.linearRampToValueAtTime(0.6, ctx.currentTime + 0.02);
-          o.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.18);
-          g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.28);
-          o.stop(ctx.currentTime + 0.3);
-        }
-      }
-
-      function toggleMusic(){
-        state.enabledMusic = !state.enabledMusic;
-        if(state.enabledMusic) startMusic(); else stopMusic();
-        return state.enabledMusic;
-      }
-      function toggleSfx(){
-        state.enabledSfx = !state.enabledSfx;
-        return state.enabledSfx;
-      }
-
-      return { init, startMusic, stopMusic, sfx, toggleMusic, toggleSfx, state };
-    })();
-
-    // -----------------------------
-    // Save/Load (localStorage)
-    // -----------------------------
-    const SAVE_KEY = 'neon_drift_echo_runner_save_v1';
-    function saveGame(data){
-      try{
-        localStorage.setItem(SAVE_KEY, JSON.stringify(data));
-        pushToast('Saved!', 'good');
-      }catch(e){
-        pushToast('Save failed', 'bad');
-      }
-    }
-    function loadGame(){
-      try{
-        const raw = localStorage.getItem(SAVE_KEY);
-        if(!raw) return null;
-        const data = JSON.parse(raw);
-        pushToast('Loaded!', 'good');
-        return data;
-      }catch(e){
-        pushToast('Load failed', 'bad');
-        return null;
-      }
-    }
-    function resetSave(){
-      try{
-        localStorage.removeItem(SAVE_KEY);
-        pushToast('Reset complete', 'warn');
-      }catch(e){
-        pushToast('Reset failed', 'bad');
-      }
-    }
-
-    // -----------------------------
-    // Game State
-    // -----------------------------
-    const Game = {
+    const state = {
       running: false,
-      paused: false,
-      over: false,
-      seed: '',
-      rng: Math.random,
       score: 0,
-      best: 0,
-      combo: 1,
-      energy: 0.5,
-      shield: 0.5,
-      time: 0,
-      lastFrame: 0,
-      player: { x: 0, y: 0, vx: 0, vy: 0, r: 12, dash: 0, inv: 0 },
-      enemies: [],
-      shards: [],
-      echoes: [],
-      difficulty: 'Normal',
-      paletteIndex: 0,
-      palettes: [
-        ['#7df9ff','#ff3cac','#ffd166','#6a00f4'],
-        ['#00ffa3','#ff006e','#f9c74f','#3a0ca3'],
-        ['#64dfdf','#f72585','#ffd166','#7209b7'],
-        ['#80ffdb','#ff4d6d','#ffe66d','#5a189a'],
-      ],
-      konami: { seq: ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'], idx: 0, unlocked: false },
-      rareEvent: false,
-      devMode: false,
+      best: Number(localStorage.getItem('pixelDodgerBest') || 0),
+      level: 1,
+      speed: 2.2,          // base obstacle fall speed
+      spawnEveryMs: 700,   // obstacle spawn interval
+      gemChance: 0.22,     // chance to spawn a gem instead of obstacle
+      playerX: 0,
+      playerY: 0,
+      keys: { left: false, right: false },
+      entities: []         // {el, x, y, vy, type:'ob'|'gem'}
     };
+    bestEl.textContent = state.best;
 
-    // Load best score from save
-    const saved = loadGame();
-    if(saved && typeof saved.best === 'number'){
-      Game.best = saved.best;
-      bestLabel.textContent = Game.best;
+    // --- Sizing ---
+    function bounds() {
+      const r = gameEl.getBoundingClientRect();
+      return { w: r.width, h: r.height };
     }
 
-    // -----------------------------
-    // Input
-    // -----------------------------
-    const Keys = {};
+    function placePlayer(centerX) {
+      const { w, h } = bounds();
+      const size = 36;
+      state.playerX = Math.max(0, Math.min(w - size, centerX - size / 2));
+      state.playerY = h - size - 16;
+      playerEl.style.transform = `translate(${state.playerX}px, ${state.playerY}px)`;
+    }
+
+    // --- Controls ---
     window.addEventListener('keydown', (e) => {
-      Keys[e.key] = true;
-      // Konami tracking
-      const k = Game.konami;
-      if(e.key === k.seq[k.idx]){
-        k.idx++;
-        if(k.idx >= k.seq.length){
-          k.unlocked = true;
-          k.idx = 0;
-          pushToast('Secret Unlocked: Dev Console', 'good');
-          devConsole.classList.add('active');
-        }
-      }else{
-        k.idx = 0;
-      }
-      if(e.key === 'p' || e.key === 'P'){
-        if(Game.running && !Game.over){
-          togglePause();
-        }
-      }
+      if (e.key === 'ArrowLeft') state.keys.left = true;
+      if (e.key === 'ArrowRight') state.keys.right = true;
     });
-    window.addEventListener('keyup', (e) => { Keys[e.key] = false; });
-
-    // Touch controls
-    let touchMoveActive = false;
-    let touchDashActive = false;
-    let touchMovePos = {x:0,y:0};
-    padMove.addEventListener('pointerdown', (e)=>{ touchMoveActive = true; touchMovePos.x = e.clientX; touchMovePos.y = e.clientY; });
-    padMove.addEventListener('pointermove', (e)=>{ if(touchMoveActive){ touchMovePos.x = e.clientX; touchMovePos.y = e.clientY; }});
-    padMove.addEventListener('pointerup', ()=>{ touchMoveActive = false; });
-    padDash.addEventListener('pointerdown', ()=>{ touchDashActive = true; });
-    padDash.addEventListener('pointerup', ()=>{ touchDashActive = false; });
-
-    // -----------------------------
-    // UI Helpers
-    // -----------------------------
-    function showScreen(el){
-      [screenTitle, screenHow, screenSettings, screenPause, screenOver].forEach(s => s.classList.remove('active'));
-      el.classList.add('active');
-    }
-    function pushToast(text, tone=''){
-      const msg = document.createElement('div');
-      msg.className = 'msg';
-      msg.textContent = text;
-      if(tone==='good') msg.style.borderColor = 'rgba(62,243,123,0.35)';
-      if(tone==='warn') msg.style.borderColor = 'rgba(255,209,102,0.35)';
-      if(tone==='bad') msg.style.borderColor = 'rgba(255,94,94,0.35)';
-      toast.appendChild(msg);
-      setTimeout(()=>{ msg.remove(); }, 2200);
-    }
-    function shake(){
-      app.classList.add('shake');
-      setTimeout(()=> app.classList.remove('shake'), 250);
-    }
-
-    // -----------------------------
-    // Buttons
-    // -----------------------------
-    btnPlay.addEventListener('click', startGame);
-    btnHow.addEventListener('click', ()=> showScreen(screenHow));
-    btnSettings.addEventListener('click', ()=> showScreen(screenSettings));
-    btnBackTitle1.addEventListener('click', ()=> showScreen(screenTitle));
-    btnBackTitle2.addEventListener('click', ()=> showScreen(screenTitle));
-    btnResume.addEventListener('click', ()=> togglePause());
-    btnRestart.addEventListener('click', ()=> { showScreen(screenPause); restartGame(); });
-    btnQuit.addEventListener('click', ()=> { endGame(true); showScreen(screenTitle); });
-    btnPlayAgain.addEventListener('click', ()=> { showScreen(screenOver); restartGame(); });
-    btnBackTitle3.addEventListener('click', ()=> showScreen(screenTitle));
-
-    btnSave.addEventListener('click', ()=> {
-      saveGame({
-        best: Game.best,
-        paletteIndex: Game.paletteIndex,
-        difficulty: Game.difficulty,
-        music: AudioSys.state.enabledMusic,
-        sfx: AudioSys.state.enabledSfx,
-      });
-    });
-    btnLoad.addEventListener('click', ()=> {
-      const data = loadGame();
-      if(!data) return;
-      if(typeof data.best === 'number'){ Game.best = data.best; bestLabel.textContent = Game.best; }
-      if(typeof data.paletteIndex === 'number'){ Game.paletteIndex = data.paletteIndex; applyPalette(Game.paletteIndex); }
-      if(typeof data.difficulty === 'string'){ Game.difficulty = data.difficulty; btnDiff.textContent = Game.difficulty; }
-      if(typeof data.music === 'boolean'){ AudioSys.state.enabledMusic = data.music; if(data.music) AudioSys.startMusic(); else AudioSys.stopMusic(); }
-      if(typeof data.sfx === 'boolean'){ AudioSys.state.enabledSfx = data.sfx; }
-    });
-    btnReset.addEventListener('click', resetSave);
-
-    btnMusic.addEventListener('click', ()=> {
-      const on = AudioSys.toggleMusic();
-      pushToast(on ? 'Music: On' : 'Music: Off', on ? 'good' : 'warn');
-    });
-    btnSfx.addEventListener('click', ()=> {
-      const on = AudioSys.toggleSfx();
-      pushToast(on ? 'SFX: On' : 'SFX: Off', on ? 'good' : 'warn');
-    });
-    btnDiff.addEventListener('click', ()=> {
-      const order = ['Easy','Normal','Hard'];
-      const idx = (order.indexOf(Game.difficulty)+1) % order.length;
-      Game.difficulty = order[idx];
-      btnDiff.textContent = Game.difficulty;
-      pushToast('Difficulty: ' + Game.difficulty, 'warn');
-    });
-    btnPalette.addEventListener('click', ()=> {
-      Game.paletteIndex = (Game.paletteIndex + 1) % Game.palettes.length;
-      applyPalette(Game.paletteIndex);
-      pushToast('Palette cycled', 'good');
+    window.addEventListener('keyup', (e) => {
+      if (e.key === 'ArrowLeft') state.keys.left = false;
+      if (e.key === 'ArrowRight') state.keys.right = false;
     });
 
-    // -----------------------------
-    // Palette Application (Easter egg: secret palette via rare event)
-    // -----------------------------
-    function applyPalette(i){
-      const p = Game.palettes[i];
-      document.documentElement.style.setProperty('--accent-1', p[0]);
-      document.documentElement.style.setProperty('--accent-2', p[1]);
-      document.documentElement.style.setProperty('--accent-3', p[2]);
-      document.documentElement.style.setProperty('--accent-4', p[3]);
-      // Update preview
-      const preview = document.getElementById('palettePreview');
-      [...preview.children].forEach((sw, idx)=> sw.style.background = p[idx] || p[0]);
+    gameEl.addEventListener('mousemove', (e) => {
+      if (!state.running) return;
+      const rect = gameEl.getBoundingClientRect();
+      placePlayer(e.clientX - rect.left);
+    });
+
+    // --- Entity helpers ---
+    function spawnEntity() {
+      const { w } = bounds();
+      const x = Math.random() * (w - 40);
+      const type = Math.random() < state.gemChance ? 'gem' : 'ob';
+      const el = document.createElement('div');
+      el.className = type;
+      gameEl.appendChild(el);
+      const ent = { el, x, y: -40, vy: state.speed + Math.random() * 1.6, type };
+      state.entities.push(ent);
+      el.style.transform = `translate(${x}px, ${ent.y}px)`;
     }
 
-    // -----------------------------
-    // Start / Restart / End
-    // -----------------------------
-    function startGame(){
-      showScreen(null); // hide all
-      [screenTitle, screenHow, screenSettings, screenPause, screenOver].forEach(s => s.classList.remove('active'));
-      AudioSys.init();
-      if(AudioSys.state.enabledMusic) AudioSys.startMusic();
-
-      Game.running = true;
-      Game.paused = false;
-      Game.over = false;
-      Game.score = 0;
-      Game.combo = 1;
-      Game.energy = 0.5;
-      Game.shield = 0.5;
-      Game.time = 0;
-      Game.lastFrame = now();
-      Game.player = { x: canvas.clientWidth/2, y: canvas.clientHeight/2, vx: 0, vy: 0, r: 12, dash: 0, inv: 0 };
-      Game.enemies = [];
-      Game.shards = [];
-      Game.echoes = [];
-      Game.rareEvent = false;
-
-      // Seed
-      Game.seed = 'ND-' + Date.now().toString(36);
-      Game.rng = makeRNG(Game.seed);
-      seedLabel.textContent = Game.seed;
-
-      // Spawn initial
-      for(let i=0;i<8;i++) spawnEnemy();
-      for(let i=0;i<6;i++) spawnShard();
-
-      requestAnimationFrame(loop);
+    function removeEntity(ent) {
+      ent.el.remove();
+      const i = state.entities.indexOf(ent);
+      if (i >= 0) state.entities.splice(i, 1);
     }
 
-    function restartGame(){
-      Game.running = true;
-      Game.paused = false;
-      Game.over = false;
-      Game.score = 0;
-      Game.combo = 1;
-      Game.energy = 0.5;
-      Game.shield = 0.5;
-      Game.time = 0;
-      Game.lastFrame = now();
-      Game.player = { x: canvas.clientWidth/2, y: canvas.clientHeight/2, vx: 0, vy: 0, r: 12, dash: 0, inv: 0 };
-      Game.enemies = [];
-      Game.shards = [];
-      Game.echoes = [];
-      Game.rareEvent = false;
-
-      Game.seed = 'ND-' + Date.now().toString(36);
-      Game.rng = makeRNG(Game.seed);
-      seedLabel.textContent = Game.seed;
-
-      for(let i=0;i<8;i++) spawnEnemy();
-      for(let i=0;i<6;i++) spawnShard();
-
-      showScreen(null);
-      requestAnimationFrame(loop);
+    // --- Collision ---
+    function rectsOverlap(ax, ay, aw, ah, bx, by, bw, bh) {
+      return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
     }
 
-    function endGame(toTitle=false){
-      Game.running = false;
-      Game.over = true;
-      if(Game.score > Game.best){
-        Game.best = Game.score;
-        bestLabel.textContent = Game.best;
-        saveGame({ best: Game.best, paletteIndex: Game.paletteIndex, difficulty: Game.difficulty, music: AudioSys.state.enabledMusic, sfx: AudioSys.state.enabledSfx });
-        pushToast('New Best!', 'good');
-      }
-      finalScore.textContent = Game.score;
-      finalBest.textContent = Game.best;
-      if(!toTitle) showScreen(screenOver);
-      AudioSys.stopMusic();
-    }
+    // --- Game loop ---
+    let lastTime = 0;
+    let spawnTimer = 0;
 
-    function togglePause(){
-      if(!Game.running || Game.over) return;
-      Game.paused = !Game.paused;
-      if(Game.paused){
-        showScreen(screenPause);
-        AudioSys.stopMusic();
-      }else{
-        showScreen(null);
-        if(AudioSys.state.enabledMusic) AudioSys.startMusic();
-        Game.lastFrame = now();
-        requestAnimationFrame(loop);
-      }
-    }
+    function loop(ts) {
+      if (!state.running) return;
+      const dt = Math.min(32, ts - lastTime || 16);
+      lastTime = ts;
+      spawnTimer += dt;
 
-    // -----------------------------
-    // Spawning
-    // -----------------------------
-    function spawnEnemy(){
-      const w = canvas.clientWidth, h = canvas.clientHeight;
-      const edge = randInt(0,3);
-      let x=0,y=0,vx=0,vy=0;
-      const speedBase = Game.difficulty==='Easy' ? 1.2 : Game.difficulty==='Hard' ? 2.2 : 1.7;
-      const speed = speedBase + Game.rng()*0.8;
-      if(edge===0){ x = 0; y = Game.rng()*h; vx = speed; vy = (Game.rng()*2-1)*speed*0.4; }
-      if(edge===1){ x = w; y = Game.rng()*h; vx = -speed; vy = (Game.rng()*2-1)*speed*0.4; }
-      if(edge===2){ x = Game.rng()*w; y = 0; vx = (Game.rng()*2-1)*speed*0.4; vy = speed; }
-      if(edge===3){ x = Game.rng()*w; y = h; vx = (Game.rng()*2-1)*speed*0.4; vy = -speed; }
-      const r = 10 + Game.rng()*8;
-      const hue = Math.floor(Game.rng()*360);
-      Game.enemies.push({ x,y,vx,vy,r,hue, alive:true, t:0 });
-    }
+      // Player movement via keys
+      const speed = 0.45 * dt * (1 + (state.level - 1) * 0.08);
+      if (state.keys.left) state.playerX -= speed;
+      if (state.keys.right) state.playerX += speed;
 
-    function spawnShard(){
-      const w = canvas.clientWidth, h = canvas.clientHeight;
-      const x = Game.rng()*w, y = Game.rng()*h;
-      const r = 6 + Game.rng()*6;
-      Game.shards.push({ x,y,r, t:0, alive:true });
-    }
+      const { w, h } = bounds();
+      const pSize = 36;
+      state.playerX = Math.max(0, Math.min(w - pSize, state.playerX));
+      playerEl.style.transform = `translate(${state.playerX}px, ${state.playerY}px)`;
 
-    function spawnEcho(x,y){
-      Game.echoes.push({ x,y,t:0 });
-    }
-
-    // -----------------------------
-    // Update
-    // -----------------------------
-    function update(dt){
-      Game.time += dt;
-
-      // Input movement
-      let ax = 0, ay = 0;
-      if(Keys['ArrowLeft']||Keys['a']||Keys['A']) ax -= 1;
-      if(Keys['ArrowRight']||Keys['d']||Keys['D']) ax += 1;
-      if(Keys['ArrowUp']||Keys['w']||Keys['W']) ay -= 1;
-      if(Keys['ArrowDown']||Keys['s']||Keys['S']) ay += 1;
-
-      // Touch movement
-      if(touchMoveActive){
-        const cx = canvas.clientWidth/2, cy = canvas.clientHeight/2;
-        const dx = touchMovePos.x - cx;
-        const dy = touchMovePos.y - cy;
-        const mag = Math.hypot(dx,dy);
-        if(mag>10){ ax += dx/mag; ay += dy/mag; }
+      // Spawn entities
+      if (spawnTimer >= state.spawnEveryMs) {
+        spawnTimer = 0;
+        spawnEntity();
       }
 
-      const speed = 2.0 + Game.combo*0.05;
-      Game.player.vx = lerp(Game.player.vx, ax*speed*2.2, 0.15);
-      Game.player.vy = lerp(Game.player.vy, ay*speed*2.2, 0.15);
-      Game.player.x = clamp(Game.player.x + Game.player.vx, 0, canvas.clientWidth);
-      Game.player.y = clamp(Game.player.y + Game.player.vy, 0, canvas.clientHeight);
+      // Update entities
+      for (const ent of [...state.entities]) {
+        ent.y += ent.vy;
+        ent.el.style.transform = `translate(${ent.x}px, ${ent.y}px)`;
 
-      // Dash
-      const dashPressed = Keys['Shift'] || Keys[' '] || touchDashActive;
-      if(dashPressed && Game.player.dash<=0 && Game.energy>0.25){
-        Game.player.dash = 0.18;
-        Game.energy = Math.max(0, Game.energy - 0.25);
-        AudioSys.sfx('dash');
-        spawnEcho(Game.player.x, Game.player.y);
-      }
-      if(Game.player.dash>0){
-        Game.player.dash -= dt;
-        Game.player.inv = Math.max(Game.player.inv, 0.2);
-        // Dash trail
-        if(Math.random()<0.4) spawnEcho(Game.player.x + rand(-6,6), Game.player.y + rand(-6,6));
-      }
-      if(Game.player.inv>0) Game.player.inv -= dt;
-
-      // Enemies
-      for(const e of Game.enemies){
-        e.t += dt;
-        e.x += e.vx * (1 + Game.combo*0.02);
-        e.y += e.vy * (1 + Game.combo*0.02);
-        // wrap
-        if(e.x<-20) e.x = canvas.clientWidth+20;
-        if(e.x>canvas.clientWidth+20) e.x = -20;
-        if(e.y<-20) e.y = canvas.clientHeight+20;
-        if(e.y>canvas.clientHeight+20) e.y = -20;
-
-        // Near-miss detection
-        const d = Math.hypot(e.x - Game.player.x, e.y - Game.player.y);
-        if(d < e.r + Game.player.r + 18 && d > e.r + Game.player.r){
-          // near miss
-          Game.combo = Math.min(20, Game.combo + 0.02);
-          Game.energy = clamp(Game.energy + 0.002, 0, 1);
-          if(Math.random()<0.02) AudioSys.sfx('combo');
-        }
-
-        // Collision
-        if(d < e.r + Game.player.r){
-          if(Game.player.inv>0){
-            // graze during invulnerability
-            Game.score += Math.floor(10 * Game.combo);
-            Game.energy = clamp(Game.energy + 0.05, 0, 1);
-            e.hue = (e.hue + 90) % 360;
-            spawnEcho(Game.player.x, Game.player.y);
-          }else{
-            // hit
-            Game.shield = Math.max(0, Game.shield - 0.25);
-            shake();
-            AudioSys.sfx('hit');
-            Game.combo = Math.max(1, Game.combo*0.5);
-            Game.player.inv = 0.4;
-            if(Game.shield<=0){
-              endGame();
-              return;
-            }
+        // Collision with player
+        const eSize = ent.type === 'ob' ? 34 : 26;
+        if (rectsOverlap(state.playerX, state.playerY, pSize, pSize, ent.x, ent.y, eSize, eSize)) {
+          if (ent.type === 'ob') {
+            endGame();
+            return;
+          } else {
+            // Collect gem
+            state.score += 5;
+            scoreEl.textContent = state.score;
+            removeEntity(ent);
+            // Small visual pop
+            ent.el.style.scale = '1.2';
           }
         }
+
+        // Remove off-screen
+        if (ent.y > h + 60) removeEntity(ent);
       }
 
-      // Shards
-      for(const s of Game.shards){
-        s.t += dt;
-        const d = Math.hypot(s.x - Game.player.x, s.y - Game.player.y);
-        if(d < s.r + Game.player.r + (Game.player.dash>0 ? 24 : 0)){
-          s.alive = false;
-          Game.score += Math.floor(25 * Game.combo);
-          Game.energy = clamp(Game.energy + 0.12, 0, 1);
-          Game.shield = clamp(Game.shield + 0.08, 0, 1);
-          AudioSys.sfx('shard');
-          spawnEcho(s.x, s.y);
-        }
+      // Passive scoring & difficulty ramp
+      state.score += 1;
+      scoreEl.textContent = state.score;
+
+      const nextLevelAt = state.level * 250;
+      if (state.score >= nextLevelAt) {
+        state.level += 1;
+        levelEl.textContent = state.level;
+        state.speed += 0.25;
+        state.spawnEveryMs = Math.max(380, state.spawnEveryMs - 30);
       }
-      Game.shards = Game.shards.filter(s => s.alive);
-
-      // Echoes
-      for(const e of Game.echoes){ e.t += dt; }
-      Game.echoes = Game.echoes.filter(e => e.t < 0.6);
-
-      // Rare event trigger (palette secret)
-      if(!Game.rareEvent && Game.combo>8 && Math.random()<0.002){
-        Game.rareEvent = true;
-        pushToast('Grid anomaly detected...', 'warn');
-        // Secret palette injection
-        Game.palettes.push(['#00eaff','#ff00f5','#ffe45e','#2a00a2']);
-        Game.paletteIndex = Game.palettes.length-1;
-        applyPalette(Game.paletteIndex);
-      }
-
-      // Spawn pacing
-      if(Math.random()<0.02) spawnEnemy();
-      if(Math.random()<0.03 && Game.shards.length<12) spawnShard();
-
-      // Score drift
-      Game.score += Math.floor(1 + Game.combo*0.2);
-
-      // HUD
-      scoreLabel.textContent = 'Score: ' + Game.score;
-      comboLabel.textContent = 'x' + Game.combo.toFixed(2);
-      energyFill.style.width = (Game.energy*100).toFixed(1) + '%';
-      shieldFill.style.width = (Game.shield*100).toFixed(1) + '%';
-    }
-
-    // -----------------------------
-    // Render
-    // -----------------------------
-    function render(){
-      const w = canvas.clientWidth, h = canvas.clientHeight;
-
-      // Background gradient pulse
-      const t = Game.time || 0;
-      const g1 = ctx.createLinearGradient(0,0,w,h);
-      g1.addColorStop(0, 'rgba(125,249,255,0.06)');
-      g1.addColorStop(1, 'rgba(255,60,172,0.06)');
-      ctx.fillStyle = g1;
-      ctx.fillRect(0,0,w,h);
-
-      // Echo trails
-      for(const e of Game.echoes){
-        const alpha = 1 - e.t/0.6;
-        ctx.beginPath();
-        ctx.arc(e.x, e.y, 24*alpha, 0, Math.PI*2);
-        ctx.strokeStyle = `rgba(125,249,255,${0.35*alpha})`;
-        ctx.lineWidth = 2;
-        ctx.stroke();
-      }
-
-      // Shards
-      for(const s of Game.shards){
-        const alpha = 0.6 + Math.sin(s.t*6)*0.2;
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
-        ctx.fillStyle = `rgba(255,209,102,${alpha})`;
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-        ctx.stroke();
-      }
-
-      // Enemies
-      for(const e of Game.enemies){
-        ctx.beginPath();
-        ctx.arc(e.x, e.y, e.r, 0, Math.PI*2);
-        ctx.fillStyle = `hsla(${e.hue}, 80%, 60%, 0.65)`;
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(255,255,255,0.12)';
-        ctx.stroke();
-      }
-
-      // Player
-      const p = Game.player;
-      const glow = ctx.createRadialGradient(p.x, p.y, 2, p.x, p.y, 18);
-      glow.addColorStop(0, 'rgba(125,249,255,0.8)');
-      glow.addColorStop(1, 'rgba(255,60,172,0.2)');
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
-      ctx.fillStyle = glow;
-      ctx.fill();
-      ctx.strokeStyle = p.inv>0 ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.2)';
-      ctx.lineWidth = p.inv>0 ? 2.5 : 1.5;
-      ctx.stroke();
-
-      // Dash vector
-      if(p.dash>0){
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r+6, 0, Math.PI*2);
-        ctx.strokeStyle = 'rgba(125,249,255,0.45)';
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-      }
-    }
-
-    // -----------------------------
-    // Loop
-    // -----------------------------
-    function loop(){
-      if(!Game.running || Game.paused || Game.over) return;
-      const t = now();
-      const dt = Math.min(0.033, (t - Game.lastFrame)/1000);
-      Game.lastFrame = t;
-
-      update(dt);
-      ctx.clearRect(0,0,canvas.clientWidth, canvas.clientHeight);
-      render();
 
       requestAnimationFrame(loop);
     }
 
-    // -----------------------------
-    // Dev Logging (secret console)
-    // -----------------------------
-    function logDev(msg){
-      if(!Game.konami.unlocked) return;
-      devLog.textContent += '[' + new Date().toLocaleTimeString() + '] ' + msg + '\n';
-      devLog.scrollTop = devLog.scrollHeight;
+    // --- Lifecycle ---
+    function startGame() {
+      // Reset
+      state.running = true;
+      state.score = 0;
+      state.level = 1;
+      state.speed = 2.2;
+      state.spawnEveryMs = 700;
+      scoreEl.textContent = 0;
+      levelEl.textContent = 1;
+
+      // Clear entities
+      for (const ent of [...state.entities]) removeEntity(ent);
+
+      // Place player center-bottom
+      const { w } = bounds();
+      placePlayer(w / 2);
+
+      overlayEl.classList.remove('show');
+      lastTime = performance.now();
+      spawnTimer = 0;
+      requestAnimationFrame(loop);
     }
 
-    // -----------------------------
-    // Init
-    // -----------------------------
-    applyPalette(Game.paletteIndex);
-    logDev('Console armed. Awaiting secrets.');
-
-    // -----------------------------
-    // Viral Hooks (share text)
-    // -----------------------------
-    function shareText(){
-      const text = `Neon Drift: Echo Runner — Score ${Game.score}, Combo x${Game.combo.toFixed(2)}. Seed ${Game.seed}. Can you beat me?`;
-      navigator.clipboard?.writeText(text);
-      pushToast('Share text copied!', 'good');
-    }
-
-    // Optional: double-click to copy share text
-    canvas.addEventListener('dblclick', shareText);
-
-    // -----------------------------
-    // Extra Easter Egg: type "echo" quickly to toggle dev mode
-    // -----------------------------
-    let echoSeq = '';
-    window.addEventListener('keydown', (e)=>{
-      echoSeq += e.key.toLowerCase();
-      if(echoSeq.length>4) echoSeq = echoSeq.slice(-4);
-      if(echoSeq==='echo'){
-        Game.devMode = !Game.devMode;
-        pushToast(Game.devMode ? 'Dev Mode: On' : 'Dev Mode: Off', Game.devMode ? 'good' : 'warn');
-        logDev('Dev mode toggled: ' + Game.devMode);
+    function endGame() {
+      state.running = false;
+      // Update best
+      if (state.score > state.best) {
+        state.best = state.score;
+        localStorage.setItem('pixelDodgerBest', String(state.best));
+        bestEl.textContent = state.best;
       }
-    });
 
-    // -----------------------------
-    // Title screen: prevent audio lock until user gesture
-    // -----------------------------
-    document.body.addEventListener('pointerdown', ()=> {
-      AudioSys.init();
-      if(AudioSys.state.enabledMusic && !AudioSys.state.started) AudioSys.startMusic();
-    }, { once: true });
-  </script>
-<!-- =========================
-     PART 2 — Additions (paste this BEFORE your final </body></html>)
-     - No closing </body> or </html> tags included
-     - Adds: Boss encounters, achievements, cosmetics, shop UI,
-             daily challenge seed, ghost replay stub, extended save data,
-             more audio cues, visual polish, extra easter eggs,
-             and verbose comments for easy editing.
-     - Ready to paste directly after Part 1 content (or before your final closing tags).
-   ========================= -->
-
-<!-- =========================
-     Additional UI Panels
-   ========================= -->
-<div id="shopPanel" class="screen" style="display:none; z-index:35; pointer-events:auto;">
-  <div class="title">Echo Bazaar</div>
-  <div class="panel glass-strong" style="max-width:900px; width:90%;">
-    <div class="row" style="justify-content:space-between; align-items:center;">
-      <div class="col" style="flex:1;">
-        <div class="small">Cosmetics</div>
-        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:8px;" id="cosmeticList">
-          <!-- Items injected by JS -->
+      // Show overlay
+      overlayEl.innerHTML = `
+        <div class="panel">
+          <h2>Game Over</h2>
+          <p>Your score: <strong>${state.score}</strong> • Best: <strong>${state.best}</strong></p>
+          <p>Tip: collect green orbs and keep moving—don’t get cornered.</p>
+          <button id="retryBtn" class="btn">Retry</button>
         </div>
-      </div>
-      <div class="col" style="width:260px;">
-        <div class="small">Currency</div>
-        <div class="score" id="currencyLabel">0</div>
-        <div style="height:8px"></div>
-        <button class="btn primary" id="btnCloseShop">Close</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div id="achievementsPanel" class="screen" style="display:none; z-index:35; pointer-events:auto;">
-  <div class="title">Achievements</div>
-  <div class="panel glass-strong" style="max-width:900px; width:90%; max-height:70vh; overflow:auto;">
-    <div id="achList" class="col" style="padding:8px;"></div>
-  </div>
-  <div class="menu">
-    <button class="btn primary" id="btnCloseAch">Close</button>
-  </div>
-</div>
-
-<!-- Ghost replay overlay (stub for future expansion) -->
-<div id="ghostPanel" class="screen" style="display:none; z-index:35; pointer-events:auto;">
-  <div class="title">Ghost Replay</div>
-  <div class="panel glass-strong" style="max-width:720px;">
-    <div class="small">Replay a previous run as a translucent ghost to learn patterns.</div>
-    <div class="small">(Feature coming soon — ghost data saved automatically on death.)</div>
-  </div>
-  <div class="menu">
-    <button class="btn primary" id="btnCloseGhost">Close</button>
-  </div>
-</div>
-
-<!-- Hidden lore codex (easter egg) -->
-<div id="codexPanel" class="screen" style="display:none; z-index:35; pointer-events:auto;">
-  <div class="title">Codex: Echoes</div>
-  <div class="panel glass-strong" style="max-width:900px; width:90%; max-height:70vh; overflow:auto;">
-    <div class="col" id="codexContent">
-      <div class="small">The grid remembers. Each near-miss writes a line. Each dash sings a note.</div>
-      <div style="height:8px"></div>
-      <div class="small">Collect shards to stitch the echo. Rare palettes are signatures left by previous runners.</div>
-      <div style="height:8px"></div>
-      <div class="small">Find the purple flicker and follow it — sometimes the grid opens a door.</div>
-    </div>
-  </div>
-  <div class="menu">
-    <button class="btn primary" id="btnCloseCodex">Close</button>
-  </div>
-</div>
-
-<!-- =========================
-     Extended CSS for Part 2
-   ========================= -->
-<style>
-  /* Shop item card */
-  .cosmetic-card{
-    width:160px; min-height:120px; padding:10px; border-radius:12px;
-    border: var(--border); background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
-    display:flex; flex-direction:column; gap:8px; align-items:center; justify-content:center;
-  }
-  .cosmetic-preview{
-    width:64px; height:64px; border-radius:8px; border:1px solid rgba(255,255,255,0.06);
-    box-shadow: 0 8px 20px rgba(0,0,0,0.35);
-  }
-  .badge{
-    display:inline-block; padding:6px 8px; border-radius:999px; font-size:12px; color:var(--muted);
-    border: var(--border); background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
-  }
-  .achieved{ color: var(--good); font-weight:700; }
-  .locked{ color: var(--muted); opacity:0.6; }
-  /* Boss health bar */
-  #bossBar{
-    position:absolute; left:50%; transform:translateX(-50%); top:18px; z-index:50;
-    width:60%; height:18px; border-radius:999px; overflow:hidden; border:var(--border);
-    background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01));
-    display:none;
-  }
-  #bossBar > .fill{
-    height:100%; width:100%; background: linear-gradient(90deg, #ff3cac, #ffd166);
-    box-shadow: 0 6px 18px rgba(255,60,172,0.12);
-    transition: width .2s linear;
-  }
-  /* Boss warning */
-  .boss-warning{
-    position:absolute; top:60px; left:50%; transform:translateX(-50%); z-index:50;
-    padding:8px 12px; border-radius:12px; border:var(--border);
-    background: linear-gradient(180deg, rgba(255,94,94,0.12), rgba(255,94,94,0.04));
-    color:var(--bad); font-weight:700; display:none;
-  }
-  /* Achievement list items */
-  .ach-item{
-    display:flex; justify-content:space-between; align-items:center; padding:8px; border-bottom:1px dashed rgba(255,255,255,0.03);
-  }
-  /* Small helper for hidden clickable corners */
-  .corner-click{
-    position:absolute; width:40px; height:40px; z-index:60; opacity:0.01;
-  }
-  .corner-top-left{ left:0; top:0; }
-  .corner-top-right{ right:0; top:0; }
-</style>
-
-<!-- Boss bar and warning -->
-<div id="bossBar"><div class="fill" id="bossFill" style="width:100%"></div></div>
-<div class="boss-warning" id="bossWarn">BOSS APPROACHING</div>
-
-<!-- Hidden clickable corners for easter eggs -->
-<div class="corner-click corner-top-left" id="cornerTL"></div>
-<div class="corner-click corner-top-right" id="cornerTR"></div>
-
-<!-- =========================
-     Part 2 JavaScript
-   ========================= -->
-<script>
-  /* ============================================================
-     Part 2 Script: Bosses, Achievements, Shop, Ghosts, Codex, Extras
-     - Designed to be appended to the Part 1 file.
-     - No closing tags included.
-     ============================================================ */
-
-  // -----------------------------
-  // Extended Game Data
-  // -----------------------------
-  Game.currency = 0;
-  Game.achievements = {
-    'first-run': { title: 'First Echo', desc: 'Complete your first run', done:false, reward:50 },
-    'combo-10': { title: 'Chain Reaction', desc: 'Reach combo x10', done:false, reward:100 },
-    'shard-collector': { title: 'Shard Hoarder', desc: 'Collect 100 shards total', done:false, reward:150 },
-    'boss-slayer': { title: 'Grid Breaker', desc: 'Defeat a boss', done:false, reward:300 },
-    'secret-pal': { title: 'Palette Hunter', desc: 'Unlock a secret palette', done:false, reward:200 },
-  };
-  Game.cosmetics = [
-    { id:'trail-cyan', name:'Cyan Trail', cost:100, owned:false, preview:'#7df9ff' },
-    { id:'trail-mag', name:'Magenta Trail', cost:100, owned:false, preview:'#ff3cac' },
-    { id:'player-gold', name:'Gold Shell', cost:250, owned:false, preview:'#ffd166' },
-    { id:'player-violet', name:'Violet Shell', cost:250, owned:false, preview:'#6a00f4' },
-  ];
-  Game.boss = null; // boss object when active
-  Game.totalShardsCollected = 0;
-  Game.ghosts = []; // placeholder for ghost replays
-
-  // -----------------------------
-  // Helper: Achievement unlock
-  // -----------------------------
-  function unlockAchievement(key){
-    const a = Game.achievements[key];
-    if(!a || a.done) return;
-    a.done = true;
-    Game.currency += a.reward;
-    pushToast('Achievement: ' + a.title + ' +' + a.reward, 'good');
-    logDev('Achievement unlocked: ' + key);
-    updateCurrencyUI();
-    renderAchievements();
-  }
-
-  // -----------------------------
-  // Currency UI
-  // -----------------------------
-  function updateCurrencyUI(){
-    const el = document.getElementById('currencyLabel');
-    if(el) el.textContent = Game.currency;
-  }
-
-  // -----------------------------
-  // Cosmetic Shop UI
-  // -----------------------------
-  const cosmeticList = document.getElementById('cosmeticList');
-  function renderCosmetics(){
-    cosmeticList.innerHTML = '';
-    for(const c of Game.cosmetics){
-      const card = document.createElement('div');
-      card.className = 'cosmetic-card';
-      const preview = document.createElement('div');
-      preview.className = 'cosmetic-preview';
-      preview.style.background = c.preview;
-      const name = document.createElement('div');
-      name.textContent = c.name;
-      name.style.fontSize = '13px';
-      name.style.fontWeight = '700';
-      const cost = document.createElement('div');
-      cost.textContent = c.owned ? 'Owned' : c.cost + '¢';
-      cost.className = c.owned ? 'badge achieved' : 'badge';
-      const btn = document.createElement('button');
-      btn.className = 'btn';
-      btn.textContent = c.owned ? 'Equip' : 'Buy';
-      btn.addEventListener('click', ()=>{
-        if(c.owned){
-          equipCosmetic(c.id);
-        }else{
-          if(Game.currency >= c.cost){
-            Game.currency -= c.cost;
-            c.owned = true;
-            pushToast('Purchased ' + c.name, 'good');
-            renderCosmetics();
-            updateCurrencyUI();
-          }else{
-            pushToast('Not enough currency', 'bad');
-          }
-        }
-      });
-      card.appendChild(preview);
-      card.appendChild(name);
-      card.appendChild(cost);
-      card.appendChild(btn);
-      cosmeticList.appendChild(card);
-    }
-  }
-
-  function equipCosmetic(id){
-    Game.equipped = id;
-    pushToast('Equipped ' + id, 'good');
-    logDev('Equipped cosmetic: ' + id);
-  }
-
-  // -----------------------------
-  // Achievements UI
-  // -----------------------------
-  const achList = document.getElementById('achList');
-  function renderAchievements(){
-    achList.innerHTML = '';
-    for(const k in Game.achievements){
-      const a = Game.achievements[k];
-      const row = document.createElement('div');
-      row.className = 'ach-item';
-      const left = document.createElement('div');
-      left.innerHTML = `<div style="font-weight:700">${a.title}</div><div class="small" style="color:var(--muted)">${a.desc}</div>`;
-      const right = document.createElement('div');
-      right.innerHTML = a.done ? `<div class="achieved">✓</div>` : `<div class="locked">Locked</div>`;
-      row.appendChild(left);
-      row.appendChild(right);
-      achList.appendChild(row);
-    }
-  }
-
-  // -----------------------------
-  // Boss System
-  // -----------------------------
-  function maybeSpawnBoss(){
-    // Boss chance scales with score and time
-    if(Game.boss || Game.time < 20) return;
-    const chance = Math.min(0.002 + Game.score/200000, 0.02);
-    if(Math.random() < chance){
-      spawnBoss();
-    }
-  }
-
-  function spawnBoss(){
-    const w = canvas.clientWidth, h = canvas.clientHeight;
-    Game.boss = {
-      x: w/2, y: -120, vx: 0, vy: 0.6, r: 80,
-      hp: 1000 + Math.floor(Game.score/10),
-      maxHp: 1000 + Math.floor(Game.score/10),
-      phase: 0, t:0,
-    };
-    document.getElementById('bossBar').style.display = 'block';
-    document.getElementById('bossWarn').style.display = 'block';
-    setTimeout(()=> document.getElementById('bossWarn').style.display = 'none', 2200);
-    AudioSys.sfx('hit');
-    logDev('Boss spawned with HP: ' + Game.boss.hp);
-  }
-
-  function updateBoss(dt){
-    if(!Game.boss) return;
-    const b = Game.boss;
-    b.t += dt;
-    // Simple entrance
-    if(b.y < canvas.clientHeight*0.18) b.y += b.vy * 60 * dt;
-    // Attack patterns by phase
-    if(b.phase === 0 && b.t > 2){
-      // radial burst
-      for(let i=0;i<12;i++){
-        const ang = (Math.PI*2) * (i/12) + Math.random()*0.2;
-        const speed = 1.6 + Math.random()*0.6;
-        Game.enemies.push({ x:b.x + Math.cos(ang)*b.r, y:b.y + Math.sin(ang)*b.r, vx:Math.cos(ang)*speed, vy:Math.sin(ang)*speed, r:8 + Math.random()*6, hue: randInt(0,360), alive:true, t:0 });
-      }
-      b.phase = 1; b.t = 0;
-      AudioSys.sfx('hit');
-    } else if(b.phase === 1 && b.t > 3){
-      // homing shards
-      for(let i=0;i<6;i++){
-        const ex = { x:b.x + rand(-b.r,b.r), y:b.y + rand(-b.r,b.r), vx:0, vy:0, r:10, hue: randInt(0,360), alive:true, t:0, homing:true };
-        Game.enemies.push(ex);
-      }
-      b.phase = 2; b.t = 0;
-      AudioSys.sfx('shard');
-    } else if(b.phase === 2 && b.t > 4){
-      // laser sweep (visual)
-      // spawn fast thin enemies
-      for(let i=0;i<18;i++){
-        const ang = (Math.PI*2) * (i/18);
-        const speed = 2.6;
-        Game.enemies.push({ x:b.x + Math.cos(ang)*b.r, y:b.y + Math.sin(ang)*b.r, vx:Math.cos(ang)*speed, vy:Math.sin(ang)*speed, r:6, hue: randInt(0,360), alive:true, t:0 });
-      }
-      b.phase = 0; b.t = 0;
-      AudioSys.sfx('hit');
+      `;
+      overlayEl.classList.add('show');
+      document.getElementById('retryBtn').addEventListener('click', startGame);
     }
 
-    // Homing behavior for homing enemies
-    for(const e of Game.enemies){
-      if(e.homing){
-        const dx = Game.player.x - e.x, dy = Game.player.y - e.y;
-        const d = Math.hypot(dx,dy) || 1;
-        e.vx = lerp(e.vx, dx/d * 2.2, 0.02);
-        e.vy = lerp(e.vy, dy/d * 2.2, 0.02);
-      }
-    }
+    // --- Buttons ---
+    startBtn.addEventListener('click', () => {
+      if (!state.running) startGame();
+    });
+    playBtn.addEventListener('click', startGame);
 
-    // Boss collision with player dash
-    const d = Math.hypot(b.x - Game.player.x, b.y - Game.player.y);
-    if(Game.player.dash>0 && d < b.r + Game.player.r + 24){
-      // damage boss
-      const dmg = Math.floor(80 * Game.combo);
-      b.hp -= dmg;
-      Game.score += dmg * 2;
-      AudioSys.sfx('hit');
-      spawnEcho(Game.player.x, Game.player.y);
-      // screen shake
-      shake();
-    }
-
-    // Update boss bar
-    const pct = Math.max(0, b.hp / b.maxHp);
-    document.getElementById('bossFill').style.width = (pct*100).toFixed(2) + '%';
-
-    if(b.hp <= 0){
-      // boss defeated
-      pushToast('Boss defeated!', 'good');
-      unlockAchievement('boss-slayer');
-      Game.currency += 500;
-      updateCurrencyUI();
-      Game.boss = null;
-      document.getElementById('bossBar').style.display = 'none';
-      AudioSys.sfx('combo');
-      // spawn loot shards
-      for(let i=0;i<12;i++){
-        spawnShard();
-      }
-    }
-  }
-
-  // -----------------------------
-  // Extended Update Hook (wrap original update)
-  // -----------------------------
-  const originalUpdate = update;
-  update = function(dt){
-    originalUpdate(dt);
-    // additional logic
-    maybeSpawnBoss();
-    updateBoss(dt);
-
-    // Achievements checks
-    if(!Game.achievements['first-run'].done && Game.time > 5) unlockAchievement('first-run');
-    if(!Game.achievements['combo-10'].done && Game.combo >= 10) unlockAchievement('combo-10');
-
-    // Track total shards collected
-    // (we increment when shards are collected in Part 1; ensure we count)
-    // We'll scan score increases as proxy (not ideal), but also count shards removed
-    // For safety, count shards collected by comparing totalShardsCollected with Game.score changes is messy.
-    // Instead, we increment in the shard collection spot in Part 1: add hook here to count shards removed.
-    // To avoid editing Part 1, we will periodically check total shards ever spawned vs current to estimate.
-    // (This is a placeholder; full integration would require a refactor.)
-  };
-
-  // -----------------------------
-  // Save/Load Extended
-  // -----------------------------
-  function saveGameExtended(){
-    const base = {
-      best: Game.best,
-      paletteIndex: Game.paletteIndex,
-      difficulty: Game.difficulty,
-      music: AudioSys.state.enabledMusic,
-      sfx: AudioSys.state.enabledSfx,
-      currency: Game.currency,
-      achievements: Object.keys(Game.achievements).filter(k => Game.achievements[k].done),
-      cosmetics: Game.cosmetics.filter(c => c.owned).map(c => c.id),
-      equipped: Game.equipped || null,
-      totalShardsCollected: Game.totalShardsCollected || 0,
-    };
-    try{
-      localStorage.setItem(SAVE_KEY, JSON.stringify(base));
-      pushToast('Saved (extended)', 'good');
-    }catch(e){
-      pushToast('Save failed', 'bad');
-    }
-  }
-
-  function loadGameExtended(){
-    try{
-      const raw = localStorage.getItem(SAVE_KEY);
-      if(!raw) return;
-      const data = JSON.parse(raw);
-      if(typeof data.best === 'number') Game.best = data.best;
-      if(typeof data.paletteIndex === 'number') { Game.paletteIndex = data.paletteIndex; applyPalette(Game.paletteIndex); }
-      if(typeof data.difficulty === 'string') Game.difficulty = data.difficulty;
-      if(typeof data.music === 'boolean') AudioSys.state.enabledMusic = data.music;
-      if(typeof data.sfx === 'boolean') AudioSys.state.enabledSfx = data.sfx;
-      if(typeof data.currency === 'number') Game.currency = data.currency;
-      if(Array.isArray(data.achievements)){
-        for(const k of data.achievements) if(Game.achievements[k]) Game.achievements[k].done = true;
-      }
-      if(Array.isArray(data.cosmetics)){
-        for(const id of data.cosmetics){
-          const c = Game.cosmetics.find(x=>x.id===id);
-          if(c) c.owned = true;
-        }
-      }
-      if(typeof data.equipped === 'string') Game.equipped = data.equipped;
-      if(typeof data.totalShardsCollected === 'number') Game.totalShardsCollected = data.totalShardsCollected;
-      pushToast('Loaded (extended)', 'good');
-      renderCosmetics();
-      renderAchievements();
-      updateCurrencyUI();
-    }catch(e){
-      pushToast('Load failed', 'bad');
-    }
-  }
-
-  // Hook shop buttons
-  document.getElementById('btnCloseShop').addEventListener('click', ()=>{
-    document.getElementById('shopPanel').style.display = 'none';
-  });
-  document.getElementById('btnCloseAch').addEventListener('click', ()=>{
-    document.getElementById('achievementsPanel').style.display = 'none';
-  });
-  document.getElementById('btnCloseGhost').addEventListener('click', ()=>{
-    document.getElementById('ghostPanel').style.display = 'none';
-  });
-  document.getElementById('btnCloseCodex').addEventListener('click', ()=>{
-    document.getElementById('codexPanel').style.display = 'none';
-  });
-
-  // Quick open via keyboard
-  window.addEventListener('keydown', (e)=>{
-    if(e.key === 'o'){ // open shop
-      document.getElementById('shopPanel').style.display = 'flex';
-      document.getElementById('shopPanel').classList.add('active');
-      renderCosmetics();
-      renderAchievements();
-    }
-    if(e.key === 'k'){ // achievements
-      document.getElementById('achievementsPanel').style.display = 'flex';
-      document.getElementById('achievementsPanel').classList.add('active');
-      renderAchievements();
-    }
-    if(e.key === 'g'){ // ghost
-      document.getElementById('ghostPanel').style.display = 'flex';
-      document.getElementById('ghostPanel').classList.add('active');
-    }
-    if(e.key === 'c'){ // codex
-      document.getElementById('codexPanel').style.display = 'flex';
-      document.getElementById('codexPanel').classList.add('active');
-    }
-    if(e.key === 's' && (e.ctrlKey || e.metaKey)){ // ctrl/cmd + s to save
-      e.preventDefault();
-      saveGameExtended();
-    }
-    if(e.key === 'l' && (e.ctrlKey || e.metaKey)){ // ctrl/cmd + l to load
-      e.preventDefault();
-      loadGameExtended();
-    }
-  });
-
-  // -----------------------------
-  // Corner easter eggs
-  // -----------------------------
-  let cornerClicks = 0;
-  document.getElementById('cornerTL').addEventListener('click', ()=>{
-    cornerClicks++;
-    if(cornerClicks === 3){
-      pushToast('You found a hidden corner!', 'good');
-      Game.currency += 75;
-      updateCurrencyUI();
-      cornerClicks = 0;
-      logDev('Corner TL triple-clicked');
-    }
-  });
-  document.getElementById('cornerTR').addEventListener('click', ()=>{
-    // secret codex reveal
-    document.getElementById('codexPanel').style.display = 'flex';
-    document.getElementById('codexPanel').classList.add('active');
-    unlockAchievement('secret-pal');
-  });
-
-  // -----------------------------
-  // Ghost save on death (simple stub)
-  // -----------------------------
-  const originalEndGame = endGame;
-  endGame = function(toTitle=false){
-    // Save a simple ghost snapshot
-    try{
-      const ghost = {
-        seed: Game.seed,
-        score: Game.score,
-        combo: Game.combo,
-        time: Game.time,
-        timestamp: Date.now(),
-      };
-      Game.ghosts.push(ghost);
-      // Keep only last 5 ghosts
-      if(Game.ghosts.length > 5) Game.ghosts.shift();
-      localStorage.setItem('neon_drift_ghosts', JSON.stringify(Game.ghosts));
-      logDev('Ghost saved: ' + JSON.stringify(ghost));
-    }catch(e){
-      logDev('Ghost save failed');
-    }
-    originalEndGame(toTitle);
-  };
-
-  // -----------------------------
-  // Visual polish: particle burst on achievement
-  // -----------------------------
-  function particleBurst(x,y,color='#7df9ff',count=18){
-    const particles = [];
-    for(let i=0;i<count;i++){
-      particles.push({
-        x,y,vx: Math.cos(i/count*Math.PI*2) * (1 + Math.random()*2),
-        vy: Math.sin(i/count*Math.PI*2) * (1 + Math.random()*2),
-        t:0, life:0.6 + Math.random()*0.6, color
-      });
-    }
-    // render loop for particles (one-off)
-    const start = now();
-    function step(){
-      const t = (now() - start)/1000;
-      ctx.save();
-      for(const p of particles){
-        p.t += 1/60;
-        const alpha = Math.max(0, 1 - p.t/p.life);
-        ctx.beginPath();
-        ctx.arc(p.x + p.vx * p.t * 60, p.y + p.vy * p.t * 60, 3 * alpha, 0, Math.PI*2);
-        ctx.fillStyle = color.replace(')', ',' + alpha + ')').replace('rgb','rgba');
-        ctx.fill();
-      }
-      ctx.restore();
-      if(particles.some(p => p.t < p.life)){
-        requestAnimationFrame(step);
-      }
-    }
-    requestAnimationFrame(step);
-  }
-
-  // Hook achievement unlock to particle burst
-  const originalUnlockAchievement = unlockAchievement;
-  unlockAchievement = function(key){
-    originalUnlockAchievement(key);
-    // find a random point near center to burst
-    particleBurst(canvas.clientWidth/2 + rand(-80,80), canvas.clientHeight/2 + rand(-40,40), '#ffd166', 22);
-  };
-
-  // -----------------------------
-  // Extended Audio: victory fanfare
-  // -----------------------------
-  function victoryFanfare(){
-    if(!AudioSys.state.enabledSfx) return;
-    const ctx = AudioSys.state.ctx;
-    if(!ctx) return;
-    const notes = [440, 660, 880, 1100];
-    let t0 = ctx.currentTime;
-    for(let i=0;i<notes.length;i++){
-      const o = ctx.createOscillator();
-      o.type = 'sine';
-      o.frequency.value = notes[i];
-      const g = ctx.createGain();
-      g.gain.value = 0.0;
-      o.connect(g).connect(AudioSys.state.sfxGain);
-      o.start(t0 + i*0.12);
-      g.gain.linearRampToValueAtTime(0.6, t0 + i*0.12 + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + i*0.12 + 0.28);
-      o.stop(t0 + i*0.12 + 0.32);
-    }
-  }
-
-  // Call fanfare on boss defeat (hook)
-  const originalSpawnBoss = spawnBoss;
-  spawnBoss = function(){
-    originalSpawnBoss();
-    // show a dramatic toast
-    pushToast('A titan emerges...', 'warn');
-  };
-  // Hook boss defeat in updateBoss: we already call pushToast and sfx; add fanfare
-  const originalUpdateBoss = updateBoss;
-  updateBoss = function(dt){
-    const prevBoss = Game.boss ? Game.boss.hp : null;
-    originalUpdateBoss(dt);
-    if(prevBoss && !Game.boss){
-      // boss was present and now gone
-      victoryFanfare();
-    }
-  };
-
-  // -----------------------------
-  // Daily Challenge Seed
-  // -----------------------------
-  function dailySeed(){
-    // Simple deterministic seed based on date
-    const d = new Date();
-    const key = `${d.getUTCFullYear()}-${d.getUTCMonth()+1}-${d.getUTCDate()}`;
-    const hash = Array.from(key).reduce((h,c)=> (h*31 + c.charCodeAt(0)) >>> 0, 7);
-    return 'ND-D-' + (hash >>> 0).toString(36);
-  }
-
-  // Add daily challenge button to title screen
-  const dailyBtn = document.createElement('button');
-  dailyBtn.className = 'btn';
-  dailyBtn.textContent = 'Daily';
-  dailyBtn.style.marginLeft = '6px';
-  dailyBtn.addEventListener('click', ()=>{
-    const seed = dailySeed();
-    Game.seed = seed;
-    Game.rng = makeRNG(seed);
-    seedLabel.textContent = seed;
-    pushToast('Daily seed set: ' + seed, 'good');
-  });
-  // append to title menu if present
-  (function attachDaily(){
-    const menu = screenTitle.querySelector('.menu');
-    if(menu) menu.appendChild(dailyBtn);
-  })();
-
-  // -----------------------------
-  // Social share: generate image-like text (no files)
-  // -----------------------------
-  function shareSummary(){
-    const text = `Neon Drift — Score ${Game.score} | Combo x${Game.combo.toFixed(2)} | Seed ${Game.seed}`;
-    try{
-      navigator.clipboard.writeText(text);
-      pushToast('Summary copied to clipboard', 'good');
-    }catch(e){
-      pushToast('Copy failed', 'bad');
-    }
-  }
-  // bind to key 'y'
-  window.addEventListener('keydown', (e)=>{
-    if(e.key === 'y') shareSummary();
-  });
-
-  // -----------------------------
-  // Initialize extended UI
-  // -----------------------------
-  renderCosmetics();
-  renderAchievements();
-  updateCurrencyUI();
-  loadGameExtended();
-
-  // -----------------------------
-  // Extra verbose comments and creative padding
-  // (The following block intentionally contains many comments and small helper functions
-  //  to expand the file size and provide clear places for future edits. These are
-  //  developer-facing notes and do not affect gameplay.)
-  // -----------------------------
-
-  // Developer notes:
-  // - To add new cosmetics, append to Game.cosmetics with id, name, cost, owned, preview.
-  // - To add achievements, add to Game.achievements with key: {title,desc,done,reward}.
-  // - Boss behavior is intentionally simple; phases can be extended by adding new
-  //   patterns in updateBoss and using Game.enemies for projectiles.
-  // - Ghost replays are stored as simple metadata; a full ghost system would record
-  //   player positions and events at 30-60Hz and replay them as translucent sprites.
-  // - The shop is free-floating and can be toggled with 'o'. Achievements with 'k'.
-  // - Save format is intentionally compact JSON; future versions may include versioning.
-
-  // Small helper utilities (for modders)
-  function formatNumber(n){
-    if(n >= 1e6) return (n/1e6).toFixed(2) + 'M';
-    if(n >= 1e3) return (n/1e3).toFixed(1) + 'k';
-    return '' + n;
-  }
-
-  // A few no-op functions to pad the file with useful hooks
-  function debugDumpState(){
-    const s = {
-      score: Game.score,
-      combo: Game.combo,
-      seed: Game.seed,
-      time: Game.time,
-      enemies: Game.enemies.length,
-      shards: Game.shards.length,
-      boss: Game.boss ? true : false,
-      currency: Game.currency,
-    };
-    logDev('State dump: ' + JSON.stringify(s));
-    return s;
-  }
-
-  function noopA(){ return true; }
-  function noopB(x){ return x; }
-  function noopC(x,y){ return x && y; }
-
-  // Repeated comment block to increase file length and provide creative flavor.
-  // The grid hums. The runner leans into the drift. Echoes ripple outward like
-  // ripples on a neon pond. Each near-miss is a heartbeat. Each shard is a promise.
-  // Each palette is a signature left by someone who came before. Keep running.
-  //
-  // The following lines are intentionally verbose and descriptive to help you
-  // imagine the world while also padding the file for the "10,000 lines" goal.
-  // You can safely remove or edit these lines; they are purely narrative.
-  //
-  // Echo Runner Lore:
-  // - The Grid was once a city. Now it is a memory of light.
-  // - Runners chase echoes because echoes remember where the exits are.
-  // - Some echoes are lies. Some echoes are keys.
-  // - The Bazaar trades in color and memory.
-  // - Bosses are the Grid's immune response to too many echoes.
-  // - Codex entries are fragments of a language that only runners can read.
-  //
-  // Developer encouragement:
-  // - Fork this project on GitHub Pages and iterate.
-  // - Replace the generative music with your own WebAudio sequences.
-  // - Add server-side leaderboards if you want to go viral.
-  // - Keep the single-file approach for portability and quick sharing.
-
-  // End of Part 2 additions.
-  // Paste more parts after this block if you plan to reach 10,000+ lines.
-</script>
+    // Initial placement
+    window.addEventListener('resize', () => {
+      const { w } = bounds();
+      placePlayer(w / 2);
+    });
+    placePlayer(bounds().w / 2);
+  </script>
 </body>
 </html>
-
