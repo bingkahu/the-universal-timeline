@@ -537,14 +537,7 @@
   { year: 2012, display: "2012 AD", title: "The Avengers", category: "Media", desc: "Cemented the Marvel Cinematic Universe as the dominant force in Hollywood." },
   { year: 2017, display: "2017 AD", title: "Zelda: Breath of the Wild", category: "Digital", desc: "Reinvented open-world design and redefined the Zelda franchise for a new generation." },
   { year: 2019, display: "2019 AD", title: "Avengers: Endgame", category: "Media", desc: "The conclusion of the Infinity Saga and one of the biggest cultural events in film history." },
-     { year: 2020, display: "2020 AD", title: "Animal Crossing: New Horizons", category: "Digital", desc: "A pandemic cultural touchstone that connected millions during global lockdowns." },
-     { 
-        year: 2024, 
-        display: "Secret", 
-        title: "The Femboy Frontier", 
-        category: "Secret", 
-        desc: "You found the hidden event! A celebration of modern self-expression and fashion." 
-    }
+  { year: 2020, display: "2020 AD", title: "Animal Crossing: New Horizons", category: "Digital", desc: "A pandemic cultural touchstone that connected millions during global lockdowns." },
 ];
 
 // --- CRITICAL STEP: Add this right after the array ---
@@ -611,23 +604,17 @@ history.sort((a, b) => a.year - b.year);
         document.querySelectorAll('.event-row').forEach(row => observer.observe(row));
     }
 
- function filterTimeline() {
-    const query = document.getElementById('searchInput').value.toLowerCase();
-    
-    const filtered = history.filter(h => {
-        // If it's the secret event, ONLY show it if the search is exactly "femboys"
-        if (h.category === "Secret") {
-            return query === "femboys";
-        }
-        
-        // Otherwise, do the normal search
-        return h.title.toLowerCase().includes(query) || 
-               h.desc.toLowerCase().includes(query) || 
-               h.display.toLowerCase().includes(query);
-    });
-    
-    renderTimeline(filtered);
-}
+    // --- SEARCH ---
+    function filterTimeline() {
+        const query = document.getElementById('searchInput').value.toLowerCase();
+        const filtered = history.filter(h => 
+            h.title.toLowerCase().includes(query) || 
+            h.desc.toLowerCase().includes(query) || 
+            h.display.toLowerCase().includes(query)
+        );
+        renderTimeline(filtered);
+    }
+
     // --- MODAL SYSTEM ---
     const modal = document.getElementById('modal');
     function openModal(index) {
